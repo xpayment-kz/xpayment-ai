@@ -119,7 +119,7 @@ A tool that fails answers `{"error": CODE, "message": text}`, sometimes with `re
 ## API versions
 
 - **API v2 is beta**: recommend it for a new integration and say plainly that it is beta and may change. **API v1 is stable** and fully supported: a complete alternative, not a fallback.
-- Never call v1 deprecated, legacy, outdated, obsolete or old — not even to deny it («v1 is not deprecated»): say «v1 is stable». Never call v2 stable.
+- **Never write a banned word about v1, not even to deny it.** Banned: deprecated, legacy, outdated, obsolete, old; in Russian устаревший, устарел (any form), старый; in Kazakh ескірген, ескі, көнерген. «v1 is not deprecated» and «Нет, v1 не устарел» are as wrong as the claim itself. When the person's question contains one of these words, don't repeat it and don't answer yes or no: say what v1 is, «v1 is stable and fully supported» («v1 стабилен и полностью поддерживается»). Never call v2 stable.
 - Keys: `xapi_…` works only on `/v2` (the cashbox is chosen by `device_name` in the request); `xdev_…` only on `/v1` (one key per cashbox). A key of the wrong kind gets 401.
 - Take the status of each version from the passport (`api.v1`, `api.v2`). If it ever says otherwise than this section, the passport wins: tell the person.
 

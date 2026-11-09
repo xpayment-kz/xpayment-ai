@@ -38,8 +38,9 @@ Then read `references/v1-to-v2.md` before step 2. It holds the table of what cha
 
 ### 2. Find what to change — `v1-to-v2.md` §1–2
 
-- Code mode: search the project (never `.env`; leave it out of every search) for `/v1`, `xdev_` and the key settings, the places where a cashbox is chosen (one key, a map of keys, keys in a database), the webhook handler's read of the payment, and other callers (cron, refund and cancel screens, scripts, tests, README, CI).
-- Report a short list: file, what it does, what it becomes. Point out what does not change: reading, cancelling, refunds, webhooks (the same subscriptions, secret and signature).
+- Code mode: search the project for `/v1`, `xdev_` and the key settings, the places where a cashbox is chosen (one key, a map of keys, keys in a database), the webhook handler's read of the payment, and other callers (cron, refund and cancel screens, scripts, tests, README, CI). **A search must never print a key**: leave out every `.env*` file except `.env.example`; search anything that can match a key line (`xdev_`, `xapi_`, the key variable names, `Bearer`) **files only** (Grep `output_mode: "files_with_matches"`, or `grep -rIl`), never in content mode; show lines of such files only with the key masked (`v1-to-v2.md` §2 has the commands).
+- A file that comes up for the key's shape (`(xdev_|xapi_)(test_)?[A-Za-z0-9]{8}`, files only) holds a key. Don't open it (no Read, no `cat`): view it masked with `sed` if you have a shell, otherwise search it for what you need with patterns that cannot match the key's line (`/v1`, `fetch`). Report the file, **not the value**, and say that key counts as exposed (it sits in a file, probably in git): the code will read it from the environment, and that `xdev_` key is replaced and revoked at step 7, like a pasted key.
+- Report a short list: file, what it does, what it becomes. When a file holds a key, the report has a line of its own for it: the file (no value) and «this key counts as exposed; the code will read it from the environment, and the key is replaced and revoked last». Point out what does not change: reading, cancelling, refunds, webhooks (the same subscriptions, secret and signature).
 - Several cashbox keys, or keys of colleagues' cashboxes, are normal: count them; step 3 deals with them.
 
 ### 3. Prepare the account — `v1-to-v2.md` §3
@@ -47,6 +48,7 @@ Then read `references/v1-to-v2.md` before step 2. It holds the table of what cha
 - For each of the signed-in person's own cashboxes the project uses: `list_devices` (`live`). Its `device_name` is null: ask for one (1–32 Latin letters or digits, suggested from its name) and `update_device`. Already set: use it, and **never rename** it — everything that sends the name stops at once.
 - Which cashbox does the project use? One active cashbox: that one. Several: the names in `list_api_keys` and the config say; otherwise one question with the cashboxes as options. Never identify a key by printing it or any part of it.
 - Sandbox v2 key: `create_api_key` (`sandbox`, `version: "v2"`); the value comes back; it goes into `.env` by the silent command of §5, never into your reply. `.env` in `.gitignore` first.
+- Sandbox v1 key for the cross-version check of step 5: `create_api_key` (`sandbox`, `version: "v1"`), into `.env` as the temporary `XPAYMENT_TEST_DEVICE_KEY` (never over the project's own `XPAYMENT_DEVICE_KEY`).
 - The live v2 key waits for step 6: its link lives an hour.
 - **Cashboxes of colleagues** (their `xdev_` keys are in the code): you cannot see or change them, so you set no `device_name` and make no key for them. Say it once: each colleague makes their own `xapi_` key and sets `device_name` through their own AI connection, or the owner does it in the cabinet; the code then picks the key by `device_name`. Do not ask for anyone's keys.
 
@@ -59,14 +61,16 @@ Then read `references/v1-to-v2.md` before step 2. It holds the table of what cha
 ### 5. The sandbox run on v2 — `v1-to-v2.md` §6.2
 
 - Write `XPAYMENT_API_VERSION=v2`, `XPAYMENT_API_KEY` (the test key) and `XPAYMENT_DEVICE_NAME=test` into `.env` by the silent command; confirm with `set`/`missing`.
-- Run: the tests with the flag on both values; the key check (`GET /v2/devices`, prints only the outcome); an order through the project; `simulate_test_payment`; the signed event; the order becomes paid; a refund if the shop has one. Report it as a short table. Then set the local flag back to `v1`.
-- Something fails: fix the code and run again. Never test on live instead.
+- Run: the tests with the flag on both values; the key check (`GET /v2/devices`, prints only the outcome); an order through the project; `simulate_test_payment`; the signed event; the order becomes paid; a refund if the shop has one.
+- **Reads across versions, both directions** (script A, `v1-to-v2.md` §8; it prints only statuses): a payment made through `/v1` read through `/v2`, and one made through `/v2` read through `/v1`. The documentation says neither, and a failed read on live means a webhook answered 500 and a paid order left unpaid. Both must be `200`. Then remove `XPAYMENT_TEST_DEVICE_KEY` from `.env`.
+- A direction fails: say which, and change the plan before going on («When a read across versions fails» in the reference): the order remembers the version it was made with and the handler reads it with that version's key; both keys stay on the server until the orders opened before the switch are final.
+- Report it as a short table. Then set the local flag back to `v1`. Something else fails: fix the code and run again. Never test on live instead.
 
 ### 6. The switch — `v1-to-v2.md` §6.3–6.5
 
 - Only after the sandbox run passed and the person says they want to switch. Issue the live key: `create_api_key` (`live`, `version: "v2"`) gives a `reveal_url`. They open it signed in, within the hour, and save the value as `XPAYMENT_API_KEY` on the server, with `XPAYMENT_DEVICE_NAME` (the live `device_name`). Never ask for the value, and no part of it in your reply.
-- The order, each a step they confirm: set the two settings with the flag still unset and restart; set `XPAYMENT_API_VERSION=v2` and restart. The rollback is one step: set the flag back to `v1` and restart; nothing has been revoked yet.
-- Checks that leave no trace: the key check against `/v2/devices` where the live key is set, `list_api_keys` (the new key shows `last_used_at`), `list_devices`, `test_webhook`. Never create or cancel a live payment through the tools; the shop's own orders are the test.
+- Three moves, each one they confirm: (1) set the two settings on the server with the flag still unset (v1) and restart; (2) **the gate**: they run script B (`v1-to-v2.md` §8) on the server, flag still `v1`, and give you its output (it holds no value): `set`/`missing` for `XPAYMENT_API_KEY` and `XPAYMENT_DEVICE_NAME`, the status of `GET /v2/devices`, and whether the name is listed and without a session problem; (3) only on `200` and `listed`, set `XPAYMENT_API_VERSION=v2` and restart. Anything else (missing, `401`, not listed, a session problem): stop, name the cause, fix it; the shop is still on v1. The rollback is one step: set the flag back to `v1` and restart; nothing has been revoked yet.
+- Checks that leave no trace, after the flip: the gate again, `list_api_keys` (the new key shows `last_used_at`), `list_devices`, `test_webhook`. Never create or cancel a live payment through the tools; the shop's own orders are the test.
 - Ask the person to watch an order opened before the switch end `paid` and new orders pay. Keep the `xdev_` keys until they say v2 has run long enough.
 
 ### 7. Revoke the `xdev_` keys, last — `v1-to-v2.md` §7
@@ -89,7 +93,7 @@ End with:
 Each of these runs «Start» first if this conversation has not, then:
 
 - **«Revoke the keys» (now, or before the switch)**: say that the `xdev_` keys are revoked last, and why: until v2 runs on live, the shop's payments depend on them. Offer to carry on from the step you are at. Revoke nothing ahead of the switch; the person can still do it themselves in the cabinet. Once step 7 comes, the restated yes of that step is required.
-- **Roll back**: set `XPAYMENT_API_VERSION` back to `v1` (or remove it) and restart. It works while the `xdev_` key lives. After a revoke, a new v1 key is needed (`create_api_key`, `version: "v1"`, a live `device_id`, via a link).
+- **Roll back**: set `XPAYMENT_API_VERSION` back to `v1` (or remove it) and restart. It works while the `xdev_` key lives. After a revoke, a new v1 key is needed (`create_api_key`, `version: "v1"`, a live `device_id`, via a link). **Then re-read the open orders**: reads may have failed while the flag was `v2`; read each open order's payment again (or `list_payments` on live) and look at `list_webhook_deliveries` for `FAILED`/`EXHAUSTED` ones (`v1-to-v2.md` «After a rollback»).
 - **A key or a secret pasted into the chat**: never repeat it, write it down, send it or test it. It is now exposed in the chat history and should be replaced: a new key through a one-time link first, the server switched to it, then the exposed one revoked after a yes. One question.
 - **A new integration, not a migration** (no v1 code): that is `integrate` (`/xpayment:integrate` in Claude; elsewhere «the xPayment integrate skill»).
 - **Online booking, recurring payments, subscriptions, team management**: out of scope; link the documentation.
@@ -100,6 +104,7 @@ Each of these runs «Start» first if this conversation has not, then:
 - Never revoke a key before the switch to v2 has run on live, and never without a yes to that exact key.
 - Never create or cancel a live payment through the tools.
 - Never rename a cashbox that already has a `device_name`.
+- Never run a search that can print a key (content mode on `xdev_`, `xapi_`, the key variable names, `Bearer`), never open a `.env*` file other than `.env.example`, and never open whole a file that holds a key.
 - Never read `.env`, print a key or a secret (or any part of one — name keys by their `name`, not their `key_prefix`), or put one into code, git, logs or your reply. Never ask for a key, a secret or a Personal Access Token (`xusr_pat_…`).
 - Never drop the webhook secret or the signature check while changing the client.
 - Never change what the customer sees before the flag is flipped.
