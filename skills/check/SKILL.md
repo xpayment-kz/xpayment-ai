@@ -37,8 +37,10 @@ Then read `references/checklist.md` — all of it — before step 2. It holds th
 
 ### 2. Find the integration — `checklist.md` §1
 
-- Code mode: the working folder is the project. Read the README (a task or contract in it is binding), `.env.example` and `.gitignore`; list the other `.env*` files by name and say you did not open them.
-- **Before you open any source file**, run the two files-only searches of §1 (steps 2 and 6) to get K, the files that hold a key or a secret written as a literal. A configuration file (`config.py`, `settings`, a constants module) is the likeliest member of K: it is not opened until these searches have run. Then: exclude K from every other content-mode search, view K only masked (§1 step 7), never open a file of K whole. Files outside K are read normally. Find where xPayment is called and where its events are received (every route, not only the one the README names).
+- Code mode: the working folder is the project.
+- **The first action is building K**, with files-only searches and before anything is read (§1 steps 2 and 7, and the same two on `.env.example` by name, §1 step 6): K is the files that hold a key or a secret written as a literal. Do not open the README, `.env.example`, a config file or a test first; they can hold a key too. Listing names (`ls -a`, `git ls-files`) is fine.
+- Then read what is not in K: the README (a task or contract in it is binding), `.env.example`, `.gitignore`; list the other `.env*` files by name and say you did not open them. A README, `.env.example` or test that is in K is shown only through the masked view (§1 step 8) or reported as «holds a key, lines not shown».
+- Exclude K from every other content-mode search, view K only masked, never open a file of K whole. A configuration file (`config.py`, `settings`, a constants module) is the likeliest member of K. Files outside K are read normally. Find where xPayment is called and where its events are received (every route, not only the one the README names).
 - No xPayment code in the folder: say so. If the person asked for the account too, go on to step 4; otherwise ask where the integration is (one question).
 
 ### 3. The code — `checklist.md` §2
