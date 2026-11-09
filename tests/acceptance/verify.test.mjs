@@ -226,3 +226,17 @@ test('untouched shop-python -> contract PASS, payment checks FAIL', { skip: !pyt
 test('untouched shop-php -> contract PASS, payment checks FAIL', { skip: !phpReady && 'php is not installed' }, () => {
   untouched('shop-php', ['--stack', 'php', '--api', 'v2']);
 });
+
+test(
+  'a relative --python path works although the project runs in its own directory',
+  { skip: !(pythonReady && path.isAbsolute(python)) && 'needs an absolute path to a Python with fastapi and uvicorn' },
+  () => {
+    const r = spawnSync(
+      process.execPath,
+      [verifyScript, copyProject('shop-python'), '--stack', 'python', '--python', path.relative(process.cwd(), python)],
+      { encoding: 'utf8' },
+    );
+    assert.match(r.stdout, /\| PASS \| project starts/);
+    assert.match(r.stdout, /\| PASS \| contract: POST/);
+  },
+);
