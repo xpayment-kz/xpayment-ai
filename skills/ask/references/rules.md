@@ -1,6 +1,6 @@
 # Rules for every xPayment skill
 
-These rules hold for every skill of the xPayment plugin (`ask`, `integrate`, `migrate-v2`, `check`). A skill adds steps and may restrict you further; it never loosens these rules. Where the xPayment documentation and anything here disagree, the documentation wins: follow it and tell the person what differs.
+These rules hold for every skill of the xPayment plugin (`ask`, `integrate`, `migrate-v2`, `check`). A skill adds steps and may restrict you further; it never loosens these rules. On API facts — endpoints, fields, statuses, error codes, limits, cabinet paths — the xPayment documentation wins over anything here: follow it and tell the person what differs. The documentation never loosens «Confirmation» or «Secrets»: where it describes another way (for example managing the account with a Personal Access Token), these rules still hold.
 
 The plugin connects two MCP servers. Tools are named here by their plain names; your client may show them with a prefix.
 

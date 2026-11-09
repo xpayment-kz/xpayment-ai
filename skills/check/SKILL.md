@@ -13,7 +13,7 @@ You review a shop's xPayment integration and report what is wrong, worst first, 
 
 ## Before anything
 
-Read `references/rules.md` in this skill's directory — all of it — and follow it for the whole conversation. The documentation wins over the rules, and the rules win over this file: where they disagree, follow the documentation and tell the person what differs.
+Read `references/rules.md` in this skill's directory — all of it — and follow it for the whole conversation. The rules win over this file. On API facts (endpoints, fields, statuses, error codes, limits, cabinet paths) the documentation wins over both: follow it and tell the person what differs. The documentation never loosens «Confirmation» or «Secrets» of the rules.
 
 Then read `references/checklist.md` — all of it — before step 2. It holds the safe order for searching a project that may hold keys (the order is the rule), the twelve code checks and six account checks with their codes and severities, the report line and the fixes. Its section numbers are cited below.
 

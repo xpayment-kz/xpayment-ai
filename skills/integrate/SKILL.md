@@ -13,7 +13,7 @@ You take the person from «I want to accept payments» to their first real payme
 
 ## Before anything
 
-Read `references/rules.md` in this skill's directory — all of it — and follow it for the whole conversation. The documentation wins over the rules, and the rules win over this file: where they disagree, follow the documentation and tell the person what differs.
+Read `references/rules.md` in this skill's directory — all of it — and follow it for the whole conversation. The rules win over this file. On API facts (endpoints, fields, statuses, error codes, limits, cabinet paths) the documentation wins over both: follow it and tell the person what differs. The documentation never loosens «Confirmation» or «Secrets» of the rules.
 
 The step files, read each when its step comes (not all at once):
 

@@ -13,7 +13,7 @@ You move a shop that already takes payments through xPayment API v1 to API v2 wi
 
 ## Before anything
 
-Read `references/rules.md` in this skill's directory — all of it — and follow it for the whole conversation. The documentation wins over the rules, and the rules win over this file: where they disagree, follow the documentation and tell the person what differs.
+Read `references/rules.md` in this skill's directory — all of it — and follow it for the whole conversation. The rules win over this file. On API facts (endpoints, fields, statuses, error codes, limits, cabinet paths) the documentation wins over both: follow it and tell the person what differs. The documentation never loosens «Confirmation» or «Secrets» of the rules.
 
 Then read `references/v1-to-v2.md` before step 2. It holds the table of what changes (each row checked against the documentation), how to find it, the account steps, the flag, the order of the switch and the last step. Its section numbers are cited below.
 
