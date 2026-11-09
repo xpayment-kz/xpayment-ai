@@ -1,0 +1,1 @@
+{"id":"3f2a9c1e-5b7d-4e8a-9f3c-2d1b0a6e8c47","status":"COMPLETED","amount":1500,"payer_phone":"+77011234567","merchant_order_id":"order-1042","device_name":"shop1","qr_token":null,"created_at":"2026-11-08T10:12:00Z","completed_at":"2026-11-08T10:13:05Z","expires_at":null,"environment":"live","refunds":[]}

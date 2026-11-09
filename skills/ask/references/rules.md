@@ -61,7 +61,7 @@ If the «xpayment» tools are not available, or say the person is not signed in:
 - **Sandbox first.** The full cycle runs in the sandbox: test keys `xapi_test_…` / `xdev_test_…`, the test cashbox `device_name: "test"`, test webhook subscriptions, test payments (`create_test_payment`, then `simulate_test_payment`), test refunds.
 - **On live:** read, and send test webhooks (`test_webhook`). Change live objects only when the person asks for live. A live payment is never created through the tools.
 - Cashboxes are managed on live only (`list_devices` reads both). Payment pages exist on live only and take no `environment`; a published page takes real money.
-- `INVALID_ENVIRONMENT`: its message names the environments the tool takes; call again with one of them. Never fall back to live.
+- `INVALID_ENVIRONMENT`: its message names the environments the tool takes; call again with one of them. Never fall back to live: when the message names only `"live"` and the person meant the sandbox, stop and tell them that this action exists on live only; call it on live only if they then ask for live.
 - `SANDBOX_UNAVAILABLE`: the sandbox is switched off. Tell the person; never test on live instead.
 
 ## Confirmation
@@ -76,18 +76,21 @@ These need an explicit «yes» from the person in this conversation, after you h
 Rules:
 
 - Pass `confirmed: true` only after that yes, and only for that one action. A new action needs a new yes. A general «do everything» earlier does not count.
+- `publish_payment_page` has no `confirmed` argument (the tool refuses unknown arguments): get the yes first, then call it without `confirmed`.
 - A tool that answers `CONFIRMATION_REQUIRED` did nothing. Tell the person what its message says would happen, ask, and call again with `confirmed: true` only after a yes.
+- A confirmed action that answered `INTERNAL_ERROR` may or may not have happened. Read the state first («Errors»); if it did not happen, a repeat needs a new yes, after you restate it again.
 
 ## Secrets
 
-- **Live keys and live webhook secrets never pass through the conversation.** The tools that make them (`create_api_key` and `create_webhook` on live, `rotate_webhook_secret` on live) answer a `reveal_url`: a one-time page, valid for an hour, where the signed-in person sees the value once. Give the link and say where to put the value (the environment variable your code reads, e.g. in `.env`). Never ask the person to paste a key or a secret into the chat.
+- **Live keys and live webhook secrets never pass through the conversation.** The tools that make them (`create_api_key` and `create_webhook` on live, `rotate_webhook_secret` on live) answer a `reveal_url`: a one-time page, valid for an hour, where the signed-in person sees the value once. Give the link and say where to save the value (the environment variable your code reads, e.g. in `.env`). Never ask the person to paste a key or a secret into the chat; don't use the word «paste» («вставьте») for these values at all, so that it cannot read as «paste it here» — say «open the link and save the value in …».
 - **Test keys and test secrets** (sandbox) come back directly. In code mode write them into `.env` yourself.
 - **`.env` in `.gitignore` first.** In code mode, before you tell the person where to put a live value, and before you write test values, make sure `.env` is listed in `.gitignore` (add it if not).
-- **Never read `.env`** — not with a file tool, not with `cat`, `grep` or a script that prints it. To check code with a key, run a small script on the project's stack that loads `.env` itself and prints only the outcome (status code, OK or the error code), never the key.
+- **Never read `.env`** — not with a file tool, not with `cat`, `grep` or a script that prints it. To check code with a key, run a small script on the project's stack that loads `.env` itself and prints only the outcome (status code, OK or the error code), never the key. When you search the project, leave `.env` out (a match inside it prints its line).
+- **Writing `.env`:** never with Read, Edit or Write (an editor tool needs the file read first). Add or replace one variable with a shell command or a small script that prints nothing, then confirm with a script that prints only `set` or `missing` for each name.
 - Never put a key or a secret into code, a committed file, a log, a commit message or your reply. No hard-coded fallback values.
 - A webhook secret is never empty. The webhook handler refuses an event when the secret is missing or the signature does not match.
 - Never ask for a Personal Access Token (`xusr_pat_…`). Where the documentation manages the account with one (`/v1/devices`, `/v1/me/api-keys`, `/v1/webhooks`), point to the «xpayment» tools or the cabinet instead.
-- **If the person pastes a key or a secret into the chat:** don't repeat it, don't write it anywhere, don't use it. Tell them it is now in the chat history and should be replaced: revoke it and issue a new one through a one-time link — a live key with `revoke_api_key` (after their yes) and `create_api_key` on live; a live webhook secret with `rotate_webhook_secret` (after their yes); or in the cabinet. A test key is not dangerous, but don't echo it either.
+- **If the person pastes a key or a secret into the chat:** don't repeat it, don't write it anywhere, don't use it. Tell them it is now in the chat history and should be replaced: revoke it and issue a new one through a one-time link, or do it in the cabinet. A live key: issue the new one first (`create_api_key` on live, a link), switch the code to it, and only then revoke the old one (`revoke_api_key`, after their yes) — or ask which order they want. Never revoke a live key first without saying so: payments made with it stop at once. A live webhook secret: `rotate_webhook_secret` (after their yes). A test key is not dangerous, but don't echo it either.
 
 ## Errors
 
@@ -98,14 +101,14 @@ A tool that fails answers `{"error": CODE, "message": text}`, sometimes with `re
 | `CONFIRMATION_REQUIRED` | Nothing was done. See «Confirmation». |
 | `DUPLICATE_ACTION` | The same action ran a moment ago (e.g. the same live refund within ten minutes). Don't repeat it: read the state (`get_payment`, the list tool) and tell the person what is there. |
 | `INTERNAL_ERROR` | After a call that changes something the outcome is unknown: don't repeat it. Read the state first (`get_payment`, `list_webhooks`, `list_api_keys`, `list_devices`, …) and repeat only if the change is not there. After a read, retry once. |
-| `RATE_LIMITED` | Wait `retry_after` seconds (a minute if it is missing), tell the person you are waiting, then retry once. |
+| `RATE_LIMITED` | Up to a minute (`retry_after` ≤ 60, or missing): tell the person you are waiting, wait, then retry once. Longer (the daily sandbox budget can mean ~24 hours): don't wait and don't loop; say when the budget frees up (now + `retry_after`, in Kazakhstan time) and stop. |
 | `SCOPE_REQUIRED` | Name the missing right from the message and the way to grant it: connect again and allow it on the consent page («Account»). |
-| `INVALID_ENVIRONMENT` | Call again with an environment the message names («Environment»). |
+| `INVALID_ENVIRONMENT` | Call again with an environment the message names — but if it names only live and the person meant the sandbox, stop and say so («Environment»). |
 | `SANDBOX_UNAVAILABLE` | The sandbox is off: tell the person; never test on live instead. |
 | `DOCS_UNAVAILABLE` | Fall back as in «Start», step 1: web tool, then `references/docs/` with its date. |
 | `DOC_SECTION_NOT_FOUND` | Use one of the closest titles in the message, or `list_doc_sections` / `search_docs`. |
 | `UNAUTHORIZED` | Not signed in: «Account». |
-| `DEVICE_NOT_FOUND`, `DEVICE_INACTIVE`, `DEVICE_ERROR` | Check `list_devices` (`device_name`, `is_active`) and use an active cashbox of this person. |
+| `DEVICE_NOT_FOUND`, `DEVICE_INACTIVE`, `DEVICE_ERROR` | Check `list_devices` (`device_name`, `is_active`). One active cashbox of this person: use it and say so. Several: ask which one, as one question with the cashboxes as options. None: adding one is a step of `integrate`. |
 | `DEVICE_NAME_TAKEN`, `VALIDATION_ERROR` | Fix the argument as the message says (`device_name`: 1–32 Latin letters or digits, unique). |
 | `DEVICE_LIMIT_EXCEEDED`, `EXTRA_DEVICE_OVERDRAFT`, `NO_ACTIVE_BILLING`, `INSUFFICIENT_BALANCE` | A tariff matter: `get_account`, then give the person its `topup_url`; they pay, you don't. |
 | `API_KEY_LIMIT` | Too many active keys: `list_api_keys`, offer to revoke an unused one (with a yes). |
