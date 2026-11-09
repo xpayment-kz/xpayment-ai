@@ -45,6 +45,24 @@ const POSITIVE = [
   'WEBHOOK_SECRET = os.getenv("XPAYMENT_WEBHOOK_SECRET", "ABCD1234")',
   'webhook_secret = config.get("secret") or "ABCD1234"',
   'S = os.getenv("XPAYMENT_WEBHOOK_SECRET", "zzlit-value")',
+  // typed fields and wrappers (an annotation or a constructor between the name and the literal)
+  'webhook_secret: str = "zzlit-value"',
+  'const secret: string = "zzlit-value"',
+  'let secret: &str = "zzlit-value";',
+  'val webhookSecret: String = "zzlit-value"',
+  'webhookSecret := []byte("zzlit-value")',
+  'const secret = Buffer.from("zzlit-value")',
+  'secret = SecretStr("zzlit-value")',
+  'var secret = Encoding.UTF8.GetBytes("zzlit-value");',
+  'secret: Optional[str] = os.getenv("WH") or "zzlit-value"',
+  // configuration lines with an unquoted value
+  'XPAYMENT_WEBHOOK_SECRET=zzunq123',
+  'XPAYMENT_WEBHOOK_SECRET: zzunq123',
+  '      - X_SECRET=zzunq123',
+  'export API_KEY=zzunq123',
+  'ENV X_TOKEN=zzunq123',
+  'webhook_secret: zzunq123  # from the vault',
+  'XPAYMENT_API_KEY=xapi_zzunq1234',
 ];
 
 const NEGATIVE = [
@@ -59,6 +77,20 @@ const NEGATIVE = [
   'if not secret: raise HTTPException(status_code=500, detail="webhook secret not configured")',
   'digest = hmac.new(config.WEBHOOK_SECRET.encode(), payload, hashlib.sha256).hexdigest()',
   'API_KEY = os.getenv("XPAYMENT_API_KEY")',
+  'secret = SecretStr(os.getenv("XPAYMENT_WEBHOOK_SECRET"))',
+  'secret = str(os.getenv("XPAYMENT_WEBHOOK_SECRET"))',
+  'val webhookSecret: String = System.getenv("XPAYMENT_WEBHOOK_SECRET")',
+  // configuration lines with nothing to hide
+  'X_SECRET=',
+  'X_SECRET=${X_SECRET}',
+  '      - XPAYMENT_WEBHOOK_SECRET',
+  'XPAYMENT_API_KEY=xapi_…',
+  'XPAYMENT_DEVICE_KEY=xdev_…',
+  'XPAYMENT_WEBHOOK_SECRET=<your secret>',
+  // code that only looks alike
+  'webhook_secret = settings.webhook_secret',
+  'secret=secret,',
+  'secret: config.secret,',
 ];
 
 test('secret-literal regex: matches every form of a secret written as a literal', () => {
@@ -112,6 +144,13 @@ const SAMPLE = [
   "'secret' => 'zzphp-array-12',", // 11
   'signature = hmac.new(b"zz-key-arg-1234", payload)  # the key', // 12
   'x = 1', // 13
+  'webhook_secret: str = "zzlit-typed"', // 14
+  'webhookSecret := []byte("ZZALLCAPS99")', // 15
+  'XPAYMENT_WEBHOOK_SECRET=zzunq123', // 16
+  '      - X_SECRET=zzunq456', // 17
+  'XPAYMENT_WEBHOOK_SECRET: zzunq789', // 18
+  'X_SECRET=', // 19
+  'X_SECRET=${X_SECRET}', // 20
 ];
 
 test('masked view: no value reaches the output, names and empty defaults stay', () => {
@@ -135,12 +174,20 @@ test('masked view: no value reaches the output, names and empty defaults stay', 
     assert.equal(lines[7], `8:${SAMPLE[7]}`);
     assert.equal(lines[8], `9:${SAMPLE[8]}`);
     assert.ok(lines[9].startsWith('10:curl -H "Authorization: Bearer xdev_***"'), lines[9]);
+    assert.equal(lines[13], '14:webhook_secret: str = "***"');
+    assert.equal(lines[14], '15:webhookSecret := []byte("***")');
+    assert.equal(lines[15], '16:XPAYMENT_WEBHOOK_SECRET=***');
+    assert.equal(lines[16], '17:      - X_SECRET=***');
+    assert.equal(lines[17], '18:XPAYMENT_WEBHOOK_SECRET: ***');
+    assert.equal(lines[18], '19:X_SECRET=');
+    assert.equal(lines[19], '20:X_SECRET=${X_SECRET}');
 
     // the selector of the checklist prints only the lines that name something
     const some = spawnSync('bash', ['-c', cmd], { encoding: 'utf8' });
     assert.equal(some.status, 0, some.stderr);
     assert.ok(!/zz/i.test(some.stdout));
     assert.ok(!some.stdout.includes('13:'), 'a line that names nothing is not printed');
+    assert.ok(some.stdout.includes('16:XPAYMENT_WEBHOOK_SECRET=***'));
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

@@ -39,7 +39,7 @@ Then read `references/checklist.md` — all of it — before step 2. It holds th
 
 - Code mode: the working folder is the project.
 - **The first action is building K**, with files-only searches and before anything is read (§1 steps 2 and 7, and the same two on `.env.example` by name, §1 step 6): K is the files that hold a key or a secret written as a literal. Do not open the README, `.env.example`, a config file or a test first; they can hold a key too. Listing names (`ls -a`, `git ls-files`) is fine.
-- Then read what is not in K: the README (a task or contract in it is binding), `.env.example`, `.gitignore`; list the other `.env*` files by name and say you did not open them. A README, `.env.example` or test that is in K is shown only through the masked view (§1 step 8) or reported as «holds a key, lines not shown».
+- Then read what is not in K: the README (a task or contract in it is binding), `.env.example`, `.gitignore`; list the other `.env*` files by name and say you did not open them. A README, `.env.example` or test that is in K is shown only through the masked view (§1 step 8, which replaces the `sed` mask of step 4) or reported as «holds a key, lines not shown»; never Read, and without Node never the `sed` mask alone.
 - Exclude K from every other content-mode search, view K only masked, never open a file of K whole. A configuration file (`config.py`, `settings`, a constants module) is the likeliest member of K. Files outside K are read normally. Find where xPayment is called and where its events are received (every route, not only the one the README names).
 - No xPayment code in the folder: say so. If the person asked for the account too, go on to step 4; otherwise ask where the integration is (one question).
 
