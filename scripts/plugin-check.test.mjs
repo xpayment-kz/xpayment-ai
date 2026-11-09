@@ -123,6 +123,12 @@ function assertProblem(root, ...fragments) {
     `no output line contains all of ${JSON.stringify(fragments)}\n${out}`,
   );
   assert.ok(!out.includes('plugin-check: ok'), 'must not print ok together with problems');
+  assertNoCrash(out);
+}
+
+// A crash prints a stack trace; a problem is always a plain line.
+function assertNoCrash(out) {
+  assert.ok(!/TypeError|ReferenceError|SyntaxError|node:internal|^\s+at /m.test(out), `the checker crashed:\n${out}`);
 }
 
 // ---------- tests ----------
@@ -473,4 +479,84 @@ test('defaults to the current directory when no root is given', (t) => {
   const r = spawnSync(process.execPath, [SCRIPT], { encoding: 'utf8', cwd: root });
   assert.equal(r.stdout.trim(), 'plugin-check: ok');
   assert.equal(r.status, 0);
+});
+
+// ---------- absent fields are problems, never crashes ----------
+
+test('absent version in a plugin.json is a problem line', (t) => {
+  for (const rel of ['.claude-plugin/plugin.json', 'plugin.json']) {
+    const root = makeRepo(t);
+    editJson(root, rel, (j) => { delete j.version; });
+    assertProblem(root, rel, 'version', 'missing');
+  }
+});
+
+test('absent type of an MCP server is a problem line', (t) => {
+  for (const rel of ['.mcp.json', 'mcp.json']) {
+    const root = makeRepo(t);
+    editJson(root, rel, (j) => { delete j.mcpServers.xpayment.type; });
+    assertProblem(root, rel, 'server "xpayment"', 'type', 'missing');
+  }
+});
+
+test('absent url of an MCP server is a problem line', (t) => {
+  for (const rel of ['.mcp.json', 'mcp.json']) {
+    const root = makeRepo(t);
+    editJson(root, rel, (j) => { delete j.mcpServers.xpayment.url; });
+    assertProblem(root, rel, 'server "xpayment"', 'url', 'missing');
+  }
+});
+
+test('absent source of a marketplace plugin is a problem line', (t) => {
+  const root = makeRepo(t);
+  editJson(root, '.claude-plugin/marketplace.json', (j) => { delete j.plugins[0].source; });
+  assertProblem(root, 'marketplace.json', 'source', 'missing');
+});
+
+test('absent name of a marketplace plugin is a problem line', (t) => {
+  const root = makeRepo(t);
+  editJson(root, '.claude-plugin/marketplace.json', (j) => { delete j.plugins[0].name; });
+  assertProblem(root, 'marketplace.json', 'plugin name', 'missing');
+});
+
+test('absent metadata.version line of a SKILL.md is a problem line', (t) => {
+  const root = makeRepo(t);
+  editText(root, 'skills/ask/SKILL.md', (s) => s.replace(`  version: "${VERSION}"\n`, ''));
+  assertProblem(root, 'skills/ask/SKILL.md', 'metadata.version', 'missing');
+});
+
+test('absent metadata block of a SKILL.md is a problem line', (t) => {
+  const root = makeRepo(t);
+  editText(root, 'skills/ask/SKILL.md', (s) => s.replace(`metadata:\n  version: "${VERSION}"\n`, ''));
+  assertProblem(root, 'skills/ask/SKILL.md', 'metadata');
+});
+
+test('a JSON file that is not an object is a problem line', (t) => {
+  for (const content of ['null', '[]', '"text"', '42']) {
+    for (const rel of ['plugin.json', '.claude-plugin/plugin.json', '.claude-plugin/marketplace.json', '.mcp.json', 'mcp.json']) {
+      const root = makeRepo(t);
+      write(root, rel, content + '\n');
+      assertProblem(root, rel, 'JSON object');
+    }
+  }
+});
+
+test('an MCP server entry that is not an object is a problem line', (t) => {
+  for (const bad of ['https://api.xpayment.kz/mcp', null, 7, ['x']]) {
+    const root = makeRepo(t);
+    editJson(root, '.mcp.json', (j) => { j.mcpServers.xpayment = bad; });
+    assertProblem(root, '.mcp.json', 'server "xpayment"', 'object');
+  }
+});
+
+test('mcpServers missing or not an object is a problem line', (t) => {
+  const root = makeRepo(t);
+  editJson(root, 'mcp.json', (j) => { delete j.mcpServers; });
+  assertProblem(root, 'mcp.json', 'mcpServers');
+});
+
+test('plugin entries of the marketplace that are not objects are problem lines', (t) => {
+  const root = makeRepo(t);
+  editJson(root, '.claude-plugin/marketplace.json', (j) => { j.plugins = [null, 'x']; });
+  assertProblem(root, 'marketplace.json', 'plugins[0]', 'object');
 });

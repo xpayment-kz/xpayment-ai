@@ -42,8 +42,10 @@ const SKIP_DIR_PATHS = new Set(['evals/results']);
 
 // ---------- small helpers ----------
 
+// A short printable form of any value, including an absent one (JSON.stringify(undefined) is undefined).
 const short = (value) => {
   const s = JSON.stringify(value);
+  if (s === undefined) return '<missing>';
   return s.length > 70 ? `${s.slice(0, 67)}...` : s;
 };
 
@@ -84,12 +86,18 @@ function loadJson(root, rel, problems) {
     problems.push(`${rel}: missing`);
     return null;
   }
+  let value;
   try {
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
+    value = JSON.parse(fs.readFileSync(file, 'utf8'));
   } catch (err) {
     problems.push(`${rel}: invalid JSON (${err.message})`);
     return null;
   }
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    problems.push(`${rel}: must contain a JSON object at the top level`);
+    return null;
+  }
+  return value;
 }
 
 // ---------- frontmatter ----------
@@ -149,7 +157,9 @@ function checkPluginManifests(root, problems) {
   for (const [rel, manifest] of [['.claude-plugin/plugin.json', claude], ['plugin.json', portable]]) {
     if (!manifest) continue;
     if (typeof manifest.name !== 'string' || !manifest.name) problems.push(`${rel}: name is missing`);
-    if (typeof manifest.version !== 'string' || !SEMVER_RE.test(manifest.version)) {
+    if (manifest.version === undefined) {
+      problems.push(`${rel}: version is missing`);
+    } else if (typeof manifest.version !== 'string' || !SEMVER_RE.test(manifest.version)) {
       problems.push(`${rel}: version ${short(manifest.version)} is not semver (X.Y.Z)`);
     }
   }
@@ -190,7 +200,11 @@ function checkMarketplace(root, pluginName, problems) {
     problems.push(`${rel}: plugins must be a non-empty array`);
     return;
   }
-  for (const plugin of market.plugins) {
+  for (const [i, plugin] of market.plugins.entries()) {
+    if (typeof plugin !== 'object' || plugin === null || Array.isArray(plugin)) {
+      problems.push(`${rel}: plugins[${i}] must be an object, got ${short(plugin)}`);
+      continue;
+    }
     if (pluginName !== undefined && plugin?.name !== pluginName) {
       problems.push(`${rel}: plugin name ${short(plugin?.name)} differs from plugin.json name ${short(pluginName)}`);
     }
@@ -219,7 +233,11 @@ function checkMcp(root, problems) {
     }
     urls[rel] = {};
     for (const [key, server] of Object.entries(servers)) {
-      urls[rel][key] = server?.url;
+      if (typeof server !== 'object' || server === null || Array.isArray(server)) {
+        problems.push(`${rel}: server "${key}" must be an object, got ${short(server)}`);
+        continue;
+      }
+      urls[rel][key] = server.url;
       if (server?.type !== type) problems.push(`${rel}: server "${key}" type is ${short(server?.type)}, expected "${type}"`);
       let https = false;
       try {
@@ -309,7 +327,9 @@ function checkSkills(root, pluginVersion, problems) {
       for (const key of Object.keys(metadata)) {
         if (key !== 'version') problems.push(`${rel}: metadata must hold only "version", found "${key}"`);
       }
-      if (pluginVersion !== undefined && metadata.version !== pluginVersion) {
+      if (metadata.version === undefined) {
+        problems.push(`${rel}: metadata.version is missing`);
+      } else if (pluginVersion !== undefined && metadata.version !== pluginVersion) {
         problems.push(`${rel}: metadata.version ${short(metadata.version)} differs from plugin version ${short(pluginVersion)}`);
       }
     }
