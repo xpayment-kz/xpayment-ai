@@ -1,6 +1,6 @@
 ---
 name: check
-description: "Checks an xPayment integration against the current documentation and the account: webhook signature, secrets and keys, idempotency, status handling, repeated deliveries, key and API version, unknown fields, and in the account cashboxes, Kaspi sessions, webhook subscriptions and the tariff. Reports problems by severity, worst first, each with why it matters and how to fix it, and offers to fix the code. Use when the person asks to check, review, audit or debug their xPayment integration, a webhook handler or their account setup («проверь интеграцию», «всё ли настроено правильно»)."
+description: "Checks an xPayment integration against the current documentation and the account: webhook signature, secrets and keys, idempotency, status handling, repeated deliveries, key and API version, unknown fields, and in the account cashboxes, Kaspi sessions, webhook subscriptions and the tariff. Reports problems by severity with fixes. Use when the person asks to check, review, audit or debug their xPayment integration."
 metadata:
   version: "0.1.0"
 ---
