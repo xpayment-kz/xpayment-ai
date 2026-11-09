@@ -289,6 +289,9 @@ function readJson(file) {
 function main(argv) {
   const options = parseArgs(argv);
   const root = path.resolve(options.root ?? process.cwd());
+  if (!fs.existsSync(path.join(root, '.claude-plugin'))) {
+    throw new UsageError(`${root} is not the plugin's root (no .claude-plugin/); each --verify takes one SUITE=FILE`);
+  }
 
   const diskProblems = checkDisk(root);
   if (diskProblems.length) {

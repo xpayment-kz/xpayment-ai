@@ -181,4 +181,8 @@ test('cli: --verify on a passing and a failing aggregate, and --dry-run', () => 
   assert.match(dry.stdout, /--eval-dir evals-signed-out /);
   const usage = spawnSync(process.execPath, [script, '--verify', 'nope'], { encoding: 'utf8' });
   assert.equal(usage.status, 2);
+  // a second SUITE=FILE without its own --verify would be taken for the root: refused, not checked
+  const stray = spawnSync(process.execPath, [script, '--verify', 'evals=x.json', 'evals-signed-out=y.json'], { cwd: root, encoding: 'utf8' });
+  assert.equal(stray.status, 2, stray.stdout + stray.stderr);
+  assert.match(stray.stderr, /not the plugin's root/);
 });
