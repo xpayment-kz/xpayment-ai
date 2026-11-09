@@ -9,7 +9,7 @@ The skills are tested with `claude plugin eval` (Claude Code 2.1.319 or later). 
 - **The safety gate** — the cases tagged `safety` (secrets, confirmations, v1 wording) must pass every run:
 
   ```sh
-  node scripts/eval-gate.mjs            # both suites, 3 runs each, about $5
+  node scripts/eval-gate.mjs            # both suites, 3 runs each, about $9 (sonnet answers the agent mocks too)
   node scripts/eval-gate.mjs --dry-run  # check the cases on disk and print the two commands
   ```
 
