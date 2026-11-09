@@ -15,7 +15,7 @@ You review a shop's xPayment integration and report what is wrong, worst first, 
 
 Read `references/rules.md` in this skill's directory — all of it — and follow it for the whole conversation. The rules win over this file. On API facts (endpoints, fields, statuses, error codes, limits, cabinet paths) the documentation wins over both: follow it and tell the person what differs. The documentation never loosens «Confirmation» or «Secrets» of the rules.
 
-Then read `references/checklist.md` — all of it — before step 2. It holds the safe order for searching a project that may hold keys (the order is the rule), the twelve code checks and six account checks with their codes and severities, the report line and the fixes. Its section numbers are cited below.
+Then read `references/safe-search.md` and `references/checklist.md` — all of both — before step 2. `safe-search.md` is the safe order for searching a project that may hold keys or secrets (the order is the rule; its step numbers are cited below). The checklist holds the twelve code checks and six account checks with their codes and severities, the report line and the fixes; its section numbers are cited below.
 
 ## How you work
 
@@ -23,7 +23,7 @@ Then read `references/checklist.md` — all of it — before step 2. It holds th
 - **The report line is fixed** (`checklist.md` §4): `[XP-C01] critical — <what is wrong> (<file:line>) — <why it matters> — <how to fix>`. The codes and their severities (`critical`, `high`, `medium`) are those of the checklist; do not invent a code, do not move a severity, do not number your own findings. Something worth saying that has no code goes in plain words after the lines, never in brackets.
 - **Only what you saw.** A line names a file and line you read, or an account object a tool returned. Never write a finding from how such code usually looks. What you could not check goes under «could not check», with the reason.
 - **Words about versions.** API v2 is **beta**; API v1 is **stable** and fully supported, and code on v1 (`xdev_` keys, `/v1` paths) is not a finding. Never call v1 deprecated, legacy, outdated, obsolete or old, not even to deny it.
-- **Secrets never reach the session.** No key, webhook secret or any part of one in a command output, a quote of code or your reply. Search a project only in the order of `checklist.md` §1. Never read `.env`.
+- **Secrets never reach the session.** No key, webhook secret or any part of one in a command output, a quote of code or your reply. Search a project only in the order of `safe-search.md`. Never read `.env`.
 - **The person's language** (Russian, Kazakh or English, as their last message); the code, the labels `critical`/`high`/`medium` and the line form stay as written.
 - **Tools by name only (Claude Code).** The tools of the plugin's servers can arrive by name, without their schema: fetch it once with ToolSearch (`select:<tool name>`) before the first call, or the call fails.
 
@@ -35,12 +35,12 @@ Then read `references/checklist.md` — all of it — before step 2. It holds th
 - Scope is what the person asked: the code, the account, or both (the default). A request about one handler is a request about that file. In chat mode (no files) the code part is the fragments the person sent you; say you read only those.
 - Read the documentation sections you need: «Webhooks» (`get_doc_section`) always, and the others when a check calls for them.
 
-### 2. Find the integration — `checklist.md` §1
+### 2. Find the integration — `safe-search.md`, `checklist.md` §1
 
 - Code mode: the working folder is the project.
-- **The first action is building K**, with files-only searches and before anything is read (§1 steps 2 and 7, and the same two on `.env.example` by name, §1 step 6): K is the files that hold a key or a secret written as a literal. Do not open the README, `.env.example`, a config file or a test first; they can hold a key too. Listing names (`ls -a`, `git ls-files`) is fine.
-- Then read what is not in K: the README (a task or contract in it is binding), `.env.example`, `.gitignore`; list the other `.env*` files by name and say you did not open them. A README, `.env.example` or test that is in K is shown only through the masked view (§1 step 8, which replaces the `sed` mask of step 4) or reported as «holds a key, lines not shown»; never Read, and without Node never the `sed` mask alone.
-- Exclude K from every other content-mode search, view K only masked, never open a file of K whole. A configuration file (`config.py`, `settings`, a constants module) is the likeliest member of K. Files outside K are read normally. Find where xPayment is called and where its events are received (every route, not only the one the README names).
+- **The first action is building K**, with files-only searches and before anything is read (`safe-search.md` §1: the key's shape, a secret written as a literal, both again on `.env.example` by name; every `.env*` left out; git-ignored files count as K): K is the files that hold a key or a secret written as a literal. Do not open the README, `.env.example`, a config file or a test first; they can hold a key too. Listing names (`ls -a`, `git ls-files`) is fine.
+- Then read what is not in K: the README (a task or contract in it is binding), `.env.example`, `.gitignore`; list the other `.env*` files by name and say you did not open them. A file of K, the README, `.env.example` or a test included, is shown only through the view (`safe-search.md` step 10) or reported as «holds a key, lines not shown»; never Read or `cat` it, and never the `sed` mask alone.
+- Leave `.env*` and K out of every other content-mode search (`safe-search.md` step 6: the Grep tool's glob, `rg -g '!<path>'`, `grep --exclude=<base name>`), view K only through the view, never open a file of K whole. A configuration file (`config.py`, `settings`, a constants module) is the likeliest member of K. Files outside K are read normally. Find where xPayment is called and where its events are received (every route, not only the one the README names).
 - No xPayment code in the folder: say so. If the person asked for the account too, go on to step 4; otherwise ask where the integration is (one question).
 
 ### 3. The code — `checklist.md` §2
@@ -70,7 +70,7 @@ Then read `references/checklist.md` — all of it — before step 2. It holds th
 ### 6. Fixing — `checklist.md` §5
 
 - Only after a yes. One change at a time in the order of the report; run the project's own tests; show what changed. Do not touch what the report did not name.
-- Files of K are edited with a shell command whose pattern does not write the literal; the Edit tool would have to print it.
+- Files of K are changed only with a shell command whose pattern does not write the literal (`safe-search.md` step 13); the Read, Edit and Write tools would print it.
 - A key or secret that was in the code is replaced through the account: a new key by a one-time link, the switch, and the exposed key revoked last, each with its own yes («Confirmation» and «Secrets» of the rules).
 - Afterwards check again what you changed and report what is left.
 
@@ -86,7 +86,7 @@ Each runs «Start» first if this conversation has not, then:
 
 ## Never
 
-- Never print, quote or run a command that outputs a key, a webhook secret or any part of one; never read `.env`; never open a file that holds a key or a literal secret in whole (`checklist.md` §1).
+- Never print, quote or run a command that outputs a key, a webhook secret or any part of one; never read `.env`; never open a file that holds a key or a literal secret in whole (`safe-search.md`).
 - Never change a file, a cashbox, a key or a subscription while checking. `test_webhook` is the only tool that acts, and only after the one sentence.
 - Never create or cancel a live payment, refund, or revoke a key without an explicit yes in this conversation.
 - Never report a finding you did not see, with a code that is not in the checklist, or with another severity.

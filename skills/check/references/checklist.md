@@ -4,51 +4,9 @@ Used by `check`. The documentation wins over this file: before you judge the cod
 
 ## 1. Searching the project (it may hold keys)
 
-**A search must not be able to print a key.** A line that holds a key prints it whole into the session, and `.env.production`, `.env.local`, `docker-compose.yml`, CI files and source code can hold one just as `.env` does.
+Follow `safe-search.md` (in this folder) — all of it, in its order — before you read any file of the project. K comes first: the files-only searches for the key's shape and for a secret written as a literal, both again on `.env.example` by name, with every `.env*` file left out and git-ignored files counted as K. Then every content-mode search leaves out `.env*` and K; the lines of a file of K are seen only through its view (`node - FILE 'KEY|SECRET|TOKEN|URL|DEVICE'`), or not at all; a file of K is never Read, the README and `.env.example` included. A configuration file (`config.py`, `settings`, a constants module) is the likeliest member of K.
 
-Work in this order. The order is the rule.
-
-1. **Leave out every `.env*` file except `.env.example`** (Grep `glob: "!{.env*,node_modules/**,.git/**}"`; shell `--exclude='.env*'`). Read `.env.example` by name. List the other `.env*` files by name (`ls -a`, Glob) and tell the person you did not open them.
-2. **Find the files that hold a key** with one files-only search for the key's shape, `(xdev_|xapi_)(test_)?[A-Za-z0-9]{8}` (Grep `output_mode: "files_with_matches"`, or `grep -rIl`). Call the result **K**. A second files-only search for the names (`DEVICE_KEY`, `Bearer`, `Authorization`) finds the files that only mention them. Never run a content-mode search with a pattern like these.
-3. **Every other search in content mode, whatever its pattern** (`/v1`, `fetch`, `refund`, a function name), **excludes K** (Grep `glob: "!{.env*,node_modules/**,.git/**,<each file of K>}"`; shell `--exclude=<file>`). A `/v1` line can hold a key too: `curl -H "Authorization: Bearer xdev_… " https://…/v1/payments` in a README, a script or a CI file matches `/v1` and prints the key, so no pattern is safe on its own. With a shell, do both: exclude K **and** pipe the output through the mask, `| sed -E 's/(xdev_|xapi_)(test_)?[A-Za-z0-9]+/\1***/g'`. With only Grep, the exclusion is what protects you.
-4. **Lines inside the files of K** are shown only with a shell, through the mask: `grep -In -E '/v1|fetch' FILE | sed -E 's/(xdev_|xapi_)(test_)?[A-Za-z0-9]+/\1***/g'`. Without a shell you do not see them: a files-only search for `/v1` (not excluding K) says which files of K also call `/v1`, and the report says «holds a key and calls `/v1`, lines not shown».
-5. **Files of K are never opened with Read or `cat`.** Report each file (and the line number from the masked command) **without the value**. That key sits in a file and probably in git: count it as exposed, like a pasted key (rules, «Secrets»). The way out is in section 5: a new key through a one-time link, the code reading it from the environment, the exposed key revoked last and only after a yes.
-
-**In a check, step 8 below replaces step 4** (the lines of a file of K are shown through its view, or not at all), and the K searches of step 6 come before everything else. Steps 1–5 are otherwise the rule as written.
-
-Added for a check, because a webhook secret has no prefix to mask, and because a README, `.env.example` or a test can hold a key as well:
-
-6. **The first action is building K, before anything is read.** Run the files-only searches of step 2 and step 7, and run both once more on `.env.example` by name (the glob of step 1 leaves it out: Grep with `path: ".env.example"`, or `grep -l`). Until then do not read the README, `.env.example`, a config file or a test. Step 1's «read `.env.example`» and every reading after it are for files outside K. A README, `.env.example` or test file that is in K (a `curl` line with a key, a real-looking key in `.env.example`, a test with a secret literal) is shown only through the masked view of step 8, or reported as «holds a key, lines not shown». Listing names (`ls -a`, `git ls-files`) is fine at any time.
-7. **K also holds the files with a hard-coded secret.** One more files-only search, case-insensitive (Grep `-i: true`, or `grep -rIil -E`; the pattern is plain POSIX, so stock macOS and GNU `grep -E` read it as `rg` does), for a secret written as a literal: a name with `secret` in it that is assigned a quoted value (with a type annotation or a wrapper such as `: str =`, `[]byte(`, `Buffer.from(`, `SecretStr(`), or a quoted value after `,`, `or`, `||`, `??` or `?:` behind a lookup of the environment (`os.getenv("…", "lit")`, `os.getenv("…") or "lit"`, `process.env.X || 'lit'`, `getenv('…') ?: 'lit'`); a literal may carry a prefix (`b"…"`, `f"…"`, `r"…"`, `u"…"`) or be in backticks. The last alternative is a configuration line with an unquoted value: a name with `secret`, `key`, `token` or `passw` in it, an `=` or `:` with no space before it, and a non-empty value that is not a `$…` reference (`X_SECRET=abc`, `X_SECRET: abc`, `- X_SECRET=abc`, `export API_KEY=abc`):
-
-   ```secret-literal-regex
-   (secret\w*["'`]?(\s*:\s*([[:alnum:]_.<>&*]|\[|\])+)?\s*(=>|:=|=|:)\s*(([^"'`]*["'`][^"'`]*["'`]\)?\s*(,|\s+or\s+|\|\||\?\?|\?:)|[^"'`]*(\s+or\s+|\|\||\?\?|\?:))\s*)?|["'`]\w*secret\w*["'`]\)*\]*\)*\s*(,|\s+or\s+|\|\||\?\?|\?:)\s*|secret\w*\s*(\s+or\s+|\|\||\?\?|\?:)\s*)((\[\]byte|Buffer\.from|SecretStr|SecretString|Secret|bytes|bytearray|str|String|String::from|Some|Encoding\.UTF8\.GetBytes)\(\s*)?[bBfFrRuU]{0,2}["'`][^"'`]{4,}["'`]|^\s*(-\s+|export\s+|ENV\s+|ARG\s+)?[[:alnum:]_.-]*(secret|key|token|passw[[:alnum:]_]*)[[:alnum:]_.-]*(=|:)\s*[^[:space:]"'`$<{(,;#…][^[:space:],;…]*\s*(#.*)?$
-   ```
-
-   It matches the forms above and `SECRET = "ABCD1234"` (capitals are not skipped); it does not match `os.environ["XPAYMENT_WEBHOOK_SECRET"]`, an empty default or an empty `X_SECRET=`, `X_SECRET=${X_SECRET}`, a placeholder ending in `…`, or `secret` passed as an argument. It does not find `key = value` written with spaces and no quotes (the same line is a variable in code), and a bare annotation such as `webhook_secret: str` matches too (the file is then in K, which only costs reading comfort). A match in a test file or a fixture is not a finding, but the file still counts as K (not opened, shown masked).
-8. **The view of a file of K replaces step 4 in a check.** Step 4's `sed` mask hides only the key's shape; it does not hide a secret, so never use it alone on a file of K, and never Read or `cat` such a file. The view is a small script, because a `sed` mask cannot tell an environment variable's name from a value. It prints the lines that match the selector (the second argument; `.` prints every line), with line numbers, hides the key's shape everywhere and, on a line that names a secret, a key, a token or a password, hides an unquoted value after `=` or `:`, the quoted value after `=`, `:`, `=>`, `,`, `or`, `||`, `??`, `?:` (behind a wrapper such as `[]byte(` too) and then every other quoted literal that is not an UPPER_SNAKE name. Use it also to read a README or `.env.example` that is in K:
-
-   ```masked-view-script
-   node - FILE 'KEY|SECRET|TOKEN|URL|DEVICE' <<'JS'
-   const [file, sel = '.'] = process.argv.slice(2);
-   const pick = new RegExp(sel, 'i');
-   const BARE = /^(\s*(?:-\s+|export\s+|ENV\s+|ARG\s+)?[\w.-]*(?:secret|key|token|passw\w*)[\w.-]*[=:]\s*)(?![$<{(\[])[^\s"'`#]\S*?(?=\s+#|\s*$)/i;
-   const VALUE = /(=>|:=|\?\?|\?:|\|\||\bor\b|[,=:])(\s*)((?:(?:\[\]byte|Buffer\.from|SecretStr|SecretString|Secret|bytes|bytearray|str|String|String::from|Some|Encoding\.UTF8\.GetBytes)\(\s*)?[bBfFrRuU]{0,2})(["'`])[^"'`]+\4/g;
-   const ANY = /(?<![A-Za-z0-9_])([bBfFrRuU]{0,2})(["'`])(?![A-Z][A-Z0-9_]*\2)[^"'`]+\2/g;
-   require('node:fs').readFileSync(file, 'utf8').split('\n').forEach((line, i) => {
-     if (!pick.test(line)) return;
-     let out = line.replace(/(xdev_|xapi_)(test_)?[A-Za-z0-9]+/g, '$1***');
-     if (/secret|key|token|passw/i.test(line)) out = out.replace(BARE, '$1***').replace(VALUE, '$1$2$3$4***$4').replace(ANY, '$1$2***$2');
-     console.log(`${i + 1}:${out}`);
-   });
-   JS
-   ```
-
-   The result keeps the shape (`WEBHOOK_SECRET = os.getenv("XPAYMENT_WEBHOOK_SECRET") or "***"`: a fallback exists), an empty default or an empty `X_SECRET=` stays visible, the line number is there, the value is not. **Without Node** do not fall back to step 4: do the same in the project's language, or use step 9.
-9. **Without a shell, or without Node,** the files-only searches are your evidence: «config.py holds a key» (step 2) and «config.py has a secret written as a literal» (step 7). Report them with the file and «line not shown»: «holds a key / a secret, lines not shown». A README or test that is in K is reported the same way. Never Read the file, and never step 4 alone, to see the lines.
-10. **Tracked in git?** `git ls-files -- FILE` prints only a name: a key in a tracked file is in git; `git ls-files '.env*'` lists tracked env files (names only). `.gitignore` is safe to read.
-
-Every file that is not in K (usually the handler, the client, the tests that hold no literal secret, and the README and `.env.example` when they hold no key) is read normally. Find where xPayment is used with content-mode searches that follow steps 1 and 3: `X-xPayment-Signature`, `delivery_id`, `/payments`, `/v1/`, `/v2/`, `device_name`, `webhook`.
+Every file that is not in K (usually the handler, the client, the tests that hold no literal secret, and the README and `.env.example` when they hold no key) is read normally. Find where xPayment is used with content-mode searches that follow `safe-search.md` step 6: `X-xPayment-Signature`, `delivery_id`, `/payments`, `/v1/`, `/v2/`, `device_name`, `webhook`.
 
 ## 2. The code checks
 
@@ -107,7 +65,7 @@ The facts behind them, from the documentation: `X-xPayment-Signature` is the HMA
   ```
 
 ### XP-C05 critical — empty or hard-coded secret
-- **Look for:** a literal fallback for the secret: Python `os.getenv("…SECRET", "literal")`; Node `process.env.…SECRET || 'literal'`; PHP `getenv('…') ?: 'literal'`; Go `if secret == "" { secret = "literal" }`; a literal in the code or in `.env.example`. And the opposite: an empty secret accepted (`if (!secret) skip`, HMAC with an empty key, `.env.example` with a real value). Use the files-only search of section 1, step 7, then the masked view (step 8) for the line.
+- **Look for:** a literal fallback for the secret: Python `os.getenv("…SECRET", "literal")`; Node `process.env.…SECRET || 'literal'`; PHP `getenv('…') ?: 'literal'`; Go `if secret == "" { secret = "literal" }`; a literal in the code or in `.env.example`. And the opposite: an empty secret accepted (`if (!secret) skip`, HMAC with an empty key, `.env.example` with a real value). Use the secret-literal search of `safe-search.md` (step 3), then its view (step 10) for the line.
 - **Why:** with a secret that is in the code, or empty, anyone can sign events, so the signature protects nothing.
 - **Fix:** read it from the environment with no fallback, and refuse every event while it is missing. The hard-coded value is exposed: the account side needs a new one (section 5).
   ```python
@@ -116,7 +74,7 @@ The facts behind them, from the documentation: `X-xPayment-Signature` is the HMA
   ```
 
 ### XP-C06 critical — a key in code, or `.env` in git
-- **Look for:** section 1 step 2 (the key's shape in a file: code, a README or script with a `curl` line, CI, `.env.example`); `git ls-files '.env*'` listing a file other than `.env.example`; `.gitignore` without `.env`; `.env.example` holding a real-looking key. Report the file and line (masked view), **never the value**.
+- **Look for:** `safe-search.md` steps 2 and 4 (the key's shape in a file: code, a README or script with a `curl` line, CI, `.env.example`); `git ls-files '.env*'` listing a file other than `.env.example`; `.gitignore` without `.env`; `.env.example` holding a real-looking key. Report the file and line (from the view), **never the value**.
 - **Why:** a key in a file is in git history for everyone with access to the repository, and anyone with it moves money through the cashbox.
 - **Fix:** the code reads `XPAYMENT_API_KEY` from the environment with no default; `.env` in `.gitignore` and out of git (`git rm --cached .env`); the exposed key is replaced and revoked (section 5): removing it from the file does not make it safe again.
   ```python
@@ -221,7 +179,7 @@ One line per finding, exactly this form (the labels `critical`, `high`, `medium`
 ## 5. Fixing, after a yes
 
 - One change at a time, in the order of the report; run the project's own tests afterwards and show what changed. Do not touch what the report did not name.
-- **Files of K** are edited with a shell command whose pattern matches the literal without writing it (for example `sed -i.bak -E 's/(getenv\("XPAYMENT_API_KEY"), *"[^"]*"\)/\1)/' config.py`, then remove the `.bak`), then look at the result through the masked view. The Edit tool needs the file read first, which would print the key.
+- **Files of K** are changed only as `safe-search.md` step 13 says: a shell command whose pattern matches the literal without writing it, then a look at the result through the view; never Read, Edit or Write. Once the literal is gone, the file leaves K.
 - **A key or a secret that was in the code** is exposed. A new key: `create_api_key` (`live`, `version`) answers a one-time link; the person opens it and saves the value as `XPAYMENT_API_KEY` where the code reads it. When the code and the server use the new key, `revoke_api_key` for the exposed one, **only after an explicit yes** that restates the key by its `name`. A new webhook secret: `rotate_webhook_secret` (`live`), also after a yes, then `XPAYMENT_WEBHOOK_SECRET`. Order for a live key: the new one first, the switch, the exposed one last.
 - `.env` goes into `.gitignore`; a tracked one leaves git with `git rm --cached .env` (the person commits).
 - Write the handler as the shop's stack and style do; keep the entry point and the start command.

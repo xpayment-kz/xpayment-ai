@@ -23,16 +23,11 @@ Not part of the migration: online booking, recurring payments and subscriptions 
 
 ## 2. Find what to change (read-only)
 
-**A search must not be able to print a key.** A line that holds a key prints it whole into the session, and `.env.production`, `.env.local`, `docker-compose.yml`, CI files and source code can hold one just as `.env` does.
+**A search must not be able to print a key or a secret.** Follow `safe-search.md` (in this folder) — all of it, in its order. K comes first, before any file is read: the files-only searches for the key's shape and for a secret written as a literal, both again on `.env.example` by name, with every `.env*` file left out and git-ignored files counted as K. Then every content-mode search leaves out `.env*` and K (and, with a shell, goes through the mask); the lines of a file of K are seen only through its view (`node - FILE '/v1|fetch|KEY|SECRET'`), or not at all; a file of K is never Read, the README and `.env.example` included.
 
-Work in this order. The order is the rule.
+A key in a file of K counts as exposed (`safe-search.md` step 12). The migration fixes it in two ways: the code reads the key from the environment, and the exposed `xdev_` key is among those revoked in section 7, last, after a yes. When a file of K has to change (the client, a script that holds a key), use the shell edit of `safe-search.md` step 13, never Read, Edit or Write.
 
-1. **Leave out every `.env*` file except `.env.example`** (Grep `glob: "!{.env*,node_modules/**,.git/**}"`; shell `--exclude='.env*'`). Read `.env.example` by name. List the other `.env*` files by name (`ls -a`, Glob) and tell the person you did not open them.
-2. **Find the files that hold a key** with one files-only search for the key's shape, `(xdev_|xapi_)(test_)?[A-Za-z0-9]{8}` (Grep `output_mode: "files_with_matches"`, or `grep -rIl`). Call the result **K**. A second files-only search for the names (`DEVICE_KEY`, `Bearer`, `Authorization`) finds the files that only mention them. Never run a content-mode search with a pattern like these.
-3. **Every other search in content mode, whatever its pattern** (`/v1`, `fetch`, `refund`, a function name), **excludes K** (Grep `glob: "!{.env*,node_modules/**,.git/**,<each file of K>}"`; shell `--exclude=<file>`). A `/v1` line can hold a key too: `curl -H "Authorization: Bearer xdev_… " https://…/v1/payments` in a README, a script or a CI file matches `/v1` and prints the key, so no pattern is safe on its own. With a shell, do both: exclude K **and** pipe the output through the mask, `| sed -E 's/(xdev_|xapi_)(test_)?[A-Za-z0-9]+/\1***/g'`. With only Grep, the exclusion is what protects you.
-4. **Lines inside the files of K** are shown only with a shell, through the mask: `grep -In -E '/v1|fetch' FILE | sed -E 's/(xdev_|xapi_)(test_)?[A-Za-z0-9]+/\1***/g'`. Without a shell you do not see them: a files-only search for `/v1` (not excluding K) says which files of K also call `/v1`, and the report says «holds a key and calls `/v1`, lines not shown».
-5. **Files of K are never opened with Read or `cat`.** Report each file (and the line number from the masked command) **without the value**. That key sits in a file and probably in git: count it as exposed, like a pasted key (rules, «Secrets»). The migration fixes it in two ways: the code reads the key from the environment, and the exposed `xdev_` key is among those revoked in section 7, last, after a yes. When you must edit such a file, use a shell edit (`sed -i`, a small script) or a Read of the lines around the key, not a whole-file Read.
-- Names of variables come from `.env.example`, the README and the config code.
+Names of variables come from `.env.example`, the README and the config code when they are not in K, and from the view when they are.
 
 What to look for:
 

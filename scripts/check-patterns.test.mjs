@@ -1,9 +1,12 @@
-// Tests of the two things in skills/check/references/checklist.md that keep a secret out of the session:
-// the files-only regex that finds a secret written as a literal (```secret-literal-regex) and the masked
-// view of a file that holds one (```masked-view-script). Both are read out of the checklist, so the text
-// the model sees is the text that is tested. The regex is run by the system `grep -E` (POSIX ERE: the
-// strictest reader of the three that matter, stock macOS grep, GNU grep and the Grep tool's ripgrep), not by
-// JavaScript; those tests are skipped where /usr/bin/grep does not exist. Node 22, no dependencies.
+// Tests of the two things in shared/safe-search.md (copied into every skill's references/) that keep a
+// secret out of the session: the files-only regex that finds a secret written as a literal
+// (```secret-literal-regex) and the masked view of a file that holds one (```masked-view-script). Both are
+// read out of that file, so the text the model sees is the text that is tested. The regex is run by the
+// system `grep -E` (POSIX ERE: the strictest reader of the three that matter, stock macOS grep, GNU grep and
+// the Grep tool's ripgrep), not by JavaScript; those tests are skipped where /usr/bin/grep does not exist.
+// The search forms the file gives for grep and rg (K by files-only searches, content searches that leave
+// K out) are run on a small project too; the rg test is skipped where no rg binary is on PATH.
+// Node 22, no dependencies.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -14,13 +17,13 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const checklist = fs.readFileSync(path.join(root, 'skills/check/references/checklist.md'), 'utf8');
+const safeSearch = fs.readFileSync(path.join(root, 'shared/safe-search.md'), 'utf8');
 const GREP = '/usr/bin/grep';
 const noGrep = !fs.existsSync(GREP) && `no ${GREP}`;
 
 function block(tag) {
-  const m = checklist.match(new RegExp('```' + tag + '\\n([\\s\\S]*?)\\n[ \\t]*```'));
-  assert.ok(m, `the checklist has no ${tag} block`);
+  const m = safeSearch.match(new RegExp('```' + tag + '\\n([\\s\\S]*?)\\n[ \\t]*```'));
+  assert.ok(m, `shared/safe-search.md has no ${tag} block`);
   const lines = m[1].split('\n');
   const indent = Math.min(...lines.filter((l) => l.trim()).map((l) => l.match(/^ */)[0].length));
   return lines.map((l) => l.slice(indent)).join('\n');
@@ -240,12 +243,80 @@ test('masked view: no value reaches the output, names and empty defaults stay', 
     assert.equal(lines[20], '21:MY_TOKEN=***'); // a # with no space before it is part of the value
     assert.equal(lines[21], '22:MY_TOKEN=***  # a comment');
 
-    // the selector of the checklist prints only the lines that name something
+    // the selector of check's checklist prints only the lines that name something
     const some = spawnSync('bash', ['-c', cmd], { encoding: 'utf8' });
     assert.equal(some.status, 0, some.stderr);
     assert.ok(!/zz/i.test(some.stdout));
     assert.ok(!some.stdout.includes('13:'), 'a line that names nothing is not printed');
     assert.ok(some.stdout.includes('16:XPAYMENT_WEBHOOK_SECRET=***'));
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// The search forms of safe-search.md, run on a small project: a key in a script and in a CI file under
+// .github/, a secret literal in settings.py, a real-looking key in .env.example, a key in .env.production,
+// and clean files that call /v1 (one with the same base name as a file of K).
+function project() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xpayment-search-'));
+  const put = (rel, text) => {
+    fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
+    fs.writeFileSync(path.join(dir, rel), text);
+  };
+  put('scripts/refund.js', "const KEY = 'xdev_zzscript1234567';\nfetch('https://api.xpayment.kz/v1/payments/1/refund');\n");
+  put('.github/workflows/ci.yml', 'run: curl -H "Authorization: Bearer xdev_zzci12345678" https://api.xpayment.kz/v1/payments\n');
+  put('settings.py', 'class Settings:\n    webhook_secret: str = "zztyped-secret"\n');
+  put('.env.example', 'XPAYMENT_API_KEY=xapi_zzexample12345\nXPAYMENT_WEBHOOK_SECRET=zzunquoted1\n');
+  put('.env.production', 'XPAYMENT_DEVICE_KEY=xdev_zzprod12345678\n');
+  put('app.js', "fetch('https://api.xpayment.kz/v1/payments/link');\n");
+  put('other/scripts/refund.js', "fetch('https://api.xpayment.kz/v1/payments/2/refund');\n");
+  return dir;
+}
+const KEY_SHAPE = '(xdev_|xapi_)(test_)?[A-Za-z0-9]{8}';
+const names = (out, dir) => out.split('\n').filter(Boolean).map((f) => path.relative(dir, path.resolve(dir, f))).sort();
+
+test('safe-search grep forms: K from files-only searches, a content search that leaves K out prints no value', { skip: noGrep }, () => {
+  const dir = project();
+  try {
+    const run = (args, input) => {
+      const r = spawnSync(GREP, args, { cwd: dir, encoding: 'utf8', input });
+      assert.ok(r.status === 0 || r.status === 1, `grep failed (${r.status}): ${r.stderr}`);
+      return r.stdout;
+    };
+    const ex = ['--exclude=.env*', '--exclude-dir=.git', '--exclude-dir=node_modules'];
+    assert.deepEqual(names(run(['-rIl', '-E', ...ex, '-e', KEY_SHAPE, '.']), dir), ['.github/workflows/ci.yml', 'scripts/refund.js']);
+    assert.deepEqual(names(run(['-rIil', '-E', ...ex, '-f', '/dev/stdin', '.'], SECRET_LITERAL + '\n'), dir), ['settings.py']);
+    assert.deepEqual(names(run(['-l', '-E', '-e', KEY_SHAPE, '.env.example']), dir), ['.env.example']);
+    assert.deepEqual(names(run(['-il', '-E', '-f', '/dev/stdin', '.env.example'], SECRET_LITERAL + '\n'), dir), ['.env.example']);
+    // step 6: grep --exclude matches the base name only
+    const leftOut = ['--exclude=.env*', '--exclude=refund.js', '--exclude=ci.yml', '--exclude=settings.py'];
+    const out = run(['-rIn', '-E', ...leftOut, '/v1', '.']);
+    assert.ok(!/zz/.test(out), `a value is in the output:\n${out}`);
+    assert.match(out, /app\.js:1:/);
+    const byPath = run(['-rIn', '-E', '--exclude=.env*', '--exclude=scripts/refund.js', '/v1', '.']);
+    assert.match(byPath, /^\.\/scripts\/refund\.js:/m, 'a path in --exclude was expected to leave the file in (the text warns about it)');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+const RG = (process.env.PATH ?? '').split(path.delimiter).map((d) => path.join(d, 'rg')).find((f) => fs.existsSync(f));
+
+test('safe-search rg forms: --hidden finds the CI file, -g with a path leaves a file of K out', { skip: !RG && 'no rg on PATH' }, () => {
+  const dir = project();
+  try {
+    const run = (args, input) => {
+      const r = spawnSync(RG, args, { cwd: dir, encoding: 'utf8', input });
+      assert.ok(r.status === 0 || r.status === 1, `rg failed (${r.status}): ${r.stderr}`);
+      return r.stdout;
+    };
+    const ex = ['--hidden', '-g', '!.env*', '-g', '!.git', '-g', '!node_modules'];
+    assert.deepEqual(names(run(['-l', ...ex, '-e', KEY_SHAPE, '.']), dir), ['.github/workflows/ci.yml', 'scripts/refund.js']);
+    assert.deepEqual(names(run(['-l', '-i', ...ex, '-f', '-', '.'], SECRET_LITERAL + '\n'), dir), ['settings.py']);
+    assert.deepEqual(names(run(['-l', '-i', '-f', '-', '.env.example'], SECRET_LITERAL + '\n'), dir), ['.env.example']);
+    const out = run(['-n', '--hidden', '-g', '!.env*', '-g', '!scripts/refund.js', '-g', '!.github/workflows/ci.yml', '-g', '!settings.py', '/v1', '.']);
+    assert.ok(!/zz/.test(out), `a value is in the output:\n${out}`);
+    assert.match(out, /other\/scripts\/refund\.js:1:/, 'a path glob leaves only that file out');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
