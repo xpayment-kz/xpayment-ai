@@ -56,7 +56,7 @@ Without Node, the same with `python3 -c` (`re.sub` with a function as the replac
    - `EXPIRED`, `CANCELLED`, `FAILED` → the order's failed status (e.g. `payment_failed`);
    - `PENDING`, `WAITING_FOR_PAYER`, `QR_TOKEN_CREATED` → no change.
    Events: `payment.completed`, `payment.expired`, `payment.cancelled`, `payment.failed`, `payment.refunded`, `payment.refund_failed` (a refund failed: the payment keeps its status; log it). Deliveries may come out of order: the status you read decides.
-7. **Answer** 2xx within 10 seconds. If reading the payment failed for a passing reason (network, 5xx), answer 5xx without marking the delivery: xPayment tries 3 times (at once, after 1 minute, after 5 minutes). A payment that is not found (404 — e.g. the made-up payment of `test_webhook`) gets 2xx and changes nothing.
+7. **Answer** 2xx within 10 seconds, and only when the read answered 200 (the order is updated) or 404 (a payment that is not found, e.g. the made-up payment of `test_webhook`: 2xx, nothing changes). **Every other outcome of the read** — a network error, a timeout, 5xx, and also 401, 403 or 400 (a wrong or revoked key, a key of the other API version) — gets 5xx, and the delivery is not marked processed: xPayment tries 3 times (at once, after 1 minute, after 5 minutes), and an answered 2xx would end the delivery with the order still unpaid. Mark the delivery processed only after a 200 or a 404.
 
 ## 5. Examples
 
@@ -105,7 +105,8 @@ app.post('/webhooks/xpayment', express.raw({ type: () => true }), async (req, re
     const order = findOrderByPaymentId(event.payment_id); // the shop's own lookup
     if (order && ORDER_STATUS[payment.status]) order.status = ORDER_STATUS[payment.status];
   } catch (err) {
-    if (err.status !== 404) return res.sendStatus(500); // xPayment delivers it again
+    // only a 404 goes on; anything else (network, 5xx, 401/403 of a wrong key) → 500, xPayment delivers it again
+    if (err.status !== 404) return res.sendStatus(500);
   }
   processed.add(event.delivery_id);
   res.sendStatus(200);
@@ -161,6 +162,7 @@ async def xpayment_webhook(request: Request):
     try:
         payment = await xpayment("GET", f"/v2/payments/{event['payment_id']}")
     except httpx.HTTPStatusError as err:
+        # only a 404 goes on; anything else (5xx, 401/403 of a wrong key) → 500, xPayment delivers it again
         if err.response.status_code != 404:
             return Response(status_code=500)
         payment = None
@@ -210,7 +212,8 @@ if ($secret === '' || !hash_equals(hash_hmac('sha256', $raw, $secret), $signatur
 $event = json_decode($raw, true);
 if (delivery_processed($event['delivery_id'])) { http_response_code(200); exit; } // a repeat: no second GET
 [$status, $payment] = xpayment('GET', '/v2/payments/' . rawurlencode($event['payment_id']));
-if ($status === 0 || $status >= 500) { http_response_code(500); exit; } // xPayment delivers it again
+// only 200 or 404 go on; anything else (network, 5xx, 401/403 of a wrong key) → 500, xPayment delivers it again
+if ($status !== 200 && $status !== 404) { http_response_code(500); exit; }
 $map = ['COMPLETED' => 'paid', 'REFUNDED' => 'refunded', 'PARTIALLY_REFUNDED' => 'refunded',
         'EXPIRED' => 'payment_failed', 'CANCELLED' => 'payment_failed', 'FAILED' => 'payment_failed'];
 if ($status === 200 && isset($map[$payment['status']])) set_order_status_by_payment($event['payment_id'], $map[$payment['status']]);
