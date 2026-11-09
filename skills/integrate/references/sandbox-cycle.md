@@ -21,9 +21,12 @@ Every tool call here has `environment: "sandbox"`. If a tool answers `SANDBOX_UN
 
 ## 2. Test webhook subscription
 
-The handler must be reachable from the internet. In code mode it usually runs on the person's computer: ask one question — a tunnel (recommended: real webhooks reach the handler, so the whole cycle is tested) or polling the payment status («code.md», «No public address»).
+On every path the code needs a test subscription and its secret in `.env`: the handler refuses every event without a secret, and the local checks sign with it. The secret only comes from a subscription (`create_webhook` answers it once), so make one even when deliveries cannot reach the handler yet.
+
+The handler must be reachable from the internet. In code mode it usually runs on the person's computer: ask one question — a tunnel (recommended: real webhooks reach the handler, so the whole cycle is tested) or, for now, locally signed checks and polling («code.md», «No public address»).
 
 - With a public URL (a tunnel or a deployed server): `create_webhook` with `environment: "sandbox"`, `url` = the handler's full address (e.g. `https://<tunnel>/webhooks/xpayment`), `events` left out (all) or the `payment.*` events. The answer has `secret` — shown this once. Write it into `.env` as `XPAYMENT_WEBHOOK_SECRET`, as for the key. The URL can change later with `update_webhook` (the secret stays).
+- Without a public URL yet: ask one question — which address the test subscription should carry until there is one: the planned production address of the handler (recommended, e.g. `https://<their domain>/webhooks/xpayment`: it becomes right once the shop is deployed) or the placeholder `https://example.invalid/webhooks/xpayment` (never reachable). Then, one call after another: `create_webhook` with `environment: "sandbox"` and that `url`; write its `secret` into `.env` as `XPAYMENT_WEBHOOK_SECRET`; at once `update_webhook` with the `subscription_id` and `is_active: false`, so that no delivery goes to an address that cannot answer. Say what you did in one line. When a tunnel or the server is up: `update_webhook` with the real `url` and `is_active: true` — the secret stays the same — and run the delivery checks of the cycle.
 - Already have a test subscription (`list_webhooks` with `environment: "sandbox"`) for that URL: reuse it; its secret is not shown again — `rotate_webhook_secret` (after a yes) makes a new one.
 - There is no subscription without a secret: xPayment makes one for every subscription and signs every delivery with it. The handler checks it; never offer to skip it.
 
@@ -40,7 +43,7 @@ Code mode — the person's code makes the payment, so the test checks their inte
 7. The other outcomes, each on a new payment: `declined` → `CANCELLED`, `expired` → `EXPIRED`, `failed` → `FAILED`; the order must end in the project's failed status.
 8. Report a short table: each check, passed or not, and what you fixed.
 
-Without a tunnel, deliveries cannot reach a local handler: check the handler with locally signed requests instead («code.md», «Checking the handler locally»), and the status changes through polling.
+Without a tunnel (the subscription is paused), deliveries cannot reach a local handler: run the same cycle, but after each `simulate_test_payment` and each refund send the handler a locally signed event for that `payment_id` («code.md», «Checking the handler locally»; it signs with `XPAYMENT_WEBHOOK_SECRET` from `.env`). The handler reads the real test payment and updates the order, so steps 3–7 are checked except the delivery itself; step 4's `list_webhook_deliveries` waits until the subscription is active.
 
 Chat mode, or no code (a payment page): `create_test_payment` (`kind: "link"` or `"invoice"`, `amount`, `merchant_order_id`), then `simulate_test_payment`, and show the person the statuses (`get_payment`). A link's `qr_token` opens the test page «Тестовая ссылка» with the status and no pay button. The cabinet tab «Песочница» → «Платежи» has the same outcome buttons.
 

@@ -448,6 +448,58 @@ test('in a git repo only tracked (and not-ignored) files are scanned', (t) => {
   assertProblem(root, 'fresh.txt', 'secret-looking string');
 });
 
+// Home paths and session ids are built at runtime too: the repository's own scan reads this file.
+const homePath = (top, name) => ['', top, name, 'work', 'notes.txt'].join('/');
+const sessionName = () => ['6a0d3c9e', '2b4f', '4e1a', '9c8d', '7f5e3b1a0c26'].join('-') + '.jsonl';
+
+test('a local home path in a file is flagged, without the user name', (t) => {
+  for (const top of ['Users', 'home']) {
+    const root = makeRepo(t);
+    write(root, 'notes/trace.md', `line one\nsee ${homePath(top, 'jdoe42')}\n`);
+    assertProblem(root, 'notes/trace.md:2', 'local home path', `/${top}/<name>/`);
+    assert.ok(!run(root).out.includes('jdoe42'), 'the output must not repeat the user name');
+  }
+});
+
+test('placeholders and other paths are not home paths', (t) => {
+  const root = makeRepo(t);
+  write(
+    root,
+    'docs.md',
+    ['/' + 'Users' + '/<name>/ and /' + 'home' + '/<user>/', '/usr/local/bin', 'see /' + 'home and /' + 'Users alone', 'https://example.com/users/'].join('\n') + '\n',
+  );
+  assert.equal(run(root).out.trim(), 'plugin-check: ok');
+});
+
+test('a UUID-named .jsonl under evals*/ is a session transcript', (t) => {
+  for (const dir of ['evals/some-case', 'evals-signed-out/other-case', 'evals']) {
+    const root = makeRepo(t);
+    write(root, `${dir}/${sessionName()}`, '{"type":"user"}\n');
+    assertProblem(root, `${dir}/${sessionName()}`, 'session transcript');
+  }
+});
+
+test('history.jsonl and UUID-named files outside evals*/ are fine', (t) => {
+  const root = makeRepo(t);
+  write(root, 'evals/some-case/history.jsonl', '{"type":"user"}\n');
+  write(root, `tests/data/${sessionName()}`, '{}\n');
+  assert.equal(run(root).out.trim(), 'plugin-check: ok');
+});
+
+test('a git-ignored session transcript is not flagged', (t) => {
+  const root = makeRepo(t);
+  write(root, '.gitignore', 'evals*/**/*-*-*-*-*.jsonl\n');
+  write(root, 'evals/some-case/history.jsonl', '{"type":"user"}\n');
+  git(root, 'init', '-q');
+  git(root, 'add', '-A');
+  git(root, 'commit', '-q', '-m', 'init');
+  write(root, `evals/some-case/${sessionName()}`, `{"cwd":"${homePath('Users', 'jdoe42')}"}\n`);
+  assert.equal(run(root).out.trim(), 'plugin-check: ok');
+  // history.jsonl itself is not ignored by that rule
+  const r = spawnSync('git', ['-C', root, 'check-ignore', '-q', 'evals/some-case/history.jsonl']);
+  assert.equal(r.status, 1, 'history.jsonl must not be ignored');
+});
+
 test('a file deleted from disk but still in the git index does not crash the check', (t) => {
   const root = makeRepo(t);
   git(root, 'init', '-q');

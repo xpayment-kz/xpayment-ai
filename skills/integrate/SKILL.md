@@ -70,7 +70,7 @@ The step files, read each when its step comes (not all at once):
 ### 6. The sandbox — `references/sandbox-cycle.md`
 
 - Test key (`create_api_key`, `environment: "sandbox"`) and test webhook subscription (`create_webhook`, `environment: "sandbox"`): the values come back at once. Code mode: `.env` in `.gitignore`, then write them into `.env` with a command that prints nothing, confirm `set`/`missing`; never print them in your reply.
-- No public address for the handler: one question — a tunnel (recommended) or polling.
+- No public address for the handler: one question — a tunnel (recommended) or, for now, locally signed checks and polling. Either way the test subscription exists and its secret is in `.env`: without a public address it is created on the planned production address (or a placeholder the person confirms, one question) and paused at once («sandbox-cycle.md», step 2).
 - Then write the code (step 7) and run the full cycle of «sandbox-cycle.md»: payment → `simulate_test_payment` → webhook (2xx on a valid signature, 401 on a wrong one) → order paid → refund → the other outcomes. Report it as a short table.
 - Without code (chat mode, payment page): a test payment and its outcomes through the tools, or the cabinet tab «Песочница».
 

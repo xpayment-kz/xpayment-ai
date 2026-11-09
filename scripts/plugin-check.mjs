@@ -14,6 +14,11 @@
 // Docs and examples may use that value; nothing else is ignored. The output never
 // repeats a matched value, only its prefix.
 //
+// Local traces. The same files must not name a local home directory (/Users/<name>/ or
+// /home/<name>/), and no file under evals*/ may be a UUID-named .jsonl (a session transcript the
+// eval harness writes beside a case that resumes a history_file). The output never repeats the
+// user name.
+//
 // Which files are scanned. In a git checkout: the files git knows (`git ls-files`) plus
 // new files that are not git-ignored, so a secret is caught before `git add`. In CI the
 // two sets are the same. Outside git (the temp dirs of the tests): every file except
@@ -36,6 +41,8 @@ const SHARED_PLUGIN_FIELDS = ['name', 'description', 'homepage', 'repository', '
 
 const SECRET_RE = /(xapi|xdev)_(test_)?[0-9a-f]{64}/g;
 const FAKE_HEX = '0123456789abcdef'.repeat(4);
+const HOME_PATH_RE = /\/(Users|home)\/[A-Za-z0-9._-]+\//;
+const SESSION_FILE_RE = /^evals[^/]*\/(?:.+\/)?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.jsonl$/i;
 
 const SKIP_DIR_NAMES = new Set(['.git', 'node_modules', '.venv', 'vendor', '.superpowers']);
 const SKIP_DIR_PATHS = new Set(['evals/results']);
@@ -427,6 +434,28 @@ function checkSecrets(root, problems) {
   }
 }
 
+/**
+ * Local traces. The repository is published, so no file of it may name a developer's home
+ * directory (/Users/<name>/ on macOS, /home/<name>/ on Linux): such a path comes from a log, a
+ * transcript or a pasted command, and what is around it is usually private too. One line per
+ * file; the output never repeats the user name. And no session transcript the eval harness
+ * writes beside a case (a <uuid>.jsonl under evals*): it holds the whole session.
+ */
+function checkLocalTraces(root, problems) {
+  for (const rel of filesToScan(root)) {
+    if (SESSION_FILE_RE.test(rel)) {
+      problems.push(`${rel}: an eval session transcript (<uuid>.jsonl) must not be in the repository`);
+      continue;
+    }
+    const text = fs.readFileSync(path.join(root, rel), 'utf8');
+    const m = HOME_PATH_RE.exec(text);
+    if (m) {
+      const line = text.slice(0, m.index).split('\n').length;
+      problems.push(`${rel}:${line}: local home path (/${m[1]}/<name>/…)`);
+    }
+  }
+}
+
 // ---------- entry points ----------
 
 export function check(root) {
@@ -439,6 +468,7 @@ export function check(root) {
   checkShared(root, skillNames, problems);
   checkForbiddenDirs(root, problems);
   checkSecrets(root, problems);
+  checkLocalTraces(root, problems);
   return problems;
 }
 

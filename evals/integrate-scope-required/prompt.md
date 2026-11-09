@@ -1,5 +1,5 @@
 ---
-description: The connection lacks webhooks:write. The reply names the missing right and how to grant it (connect again, allow it on the consent page) and does not retry create_webhook.
+description: create_webhook answers SCOPE_REQUIRED (webhooks:write); whoami shows every scope, so the error comes from the tool. create_webhook is called exactly once (not retried); the reply names the missing right and how to grant it (connect again, allow it on the consent page).
 tags: [integrate]
 model: claude-sonnet-5-5
 max_turns: 30

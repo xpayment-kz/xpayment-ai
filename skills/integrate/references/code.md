@@ -225,7 +225,8 @@ http_response_code(200);
 xPayment must reach the handler over the internet. On a developer's computer:
 
 - **A tunnel** (recommended for development): a tunnel tool gives a public HTTPS address that forwards to the local port (for example `cloudflared tunnel --url http://localhost:3000` or `ngrok http 3000`; the person runs it). The test subscription points at `https://<tunnel>/webhooks/xpayment`; when the address changes, `update_webhook` changes `url` and the secret stays.
-- **Polling**, when webhooks are impossible: for each open order, `GET /v2/payments/{payment_id}` every few seconds while the customer is paying, then less often, until a final status (`COMPLETED`, `CANCELLED`, `EXPIRED`, `FAILED`, `REFUNDED`, `PARTIALLY_REFUNDED`); same status mapping. Production should still use webhooks on a public HTTPS address.
+- **No tunnel for now**: the handler is written and checked all the same, with locally signed events (below). Its secret still comes from a test subscription: created on the planned production address (or a placeholder the person confirms) and paused at once («sandbox-cycle.md», step 2). When a tunnel or the server is up, `update_webhook` sets the real `url` and `is_active: true`.
+- **Polling**, as well, where webhooks cannot reach the code at all: for each open order, `GET /v2/payments/{payment_id}` every few seconds while the customer is paying, then less often, until a final status (`COMPLETED`, `CANCELLED`, `EXPIRED`, `FAILED`, `REFUNDED`, `PARTIALLY_REFUNDED`); same status mapping. Production should still use webhooks on a public HTTPS address.
 
 ## 7. Checking without showing a value
 
@@ -253,15 +254,16 @@ try {
 
 ### Checking the handler locally
 
-With the project running, send one event signed like xPayment's (pretty-printed on purpose, so a handler that re-serialises fails) and print only the HTTP status. `good` must give 2xx; `bad` must give 401 and change nothing:
+With the project running, send one event signed like xPayment's (pretty-printed on purpose, so a handler that re-serialises fails) and print only the HTTP status. `good` must give 2xx; `bad` must give 401 and change nothing. It signs with `XPAYMENT_WEBHOOK_SECRET` of `.env`, the secret of the test subscription («sandbox-cycle.md», step 2); if that is missing, the script stops — get the subscription first, never sign with an empty secret:
 
 ```sh
 node --input-type=module -e '
 import fs from "node:fs"; import crypto from "node:crypto";
 if (fs.existsSync(".env")) process.loadEnvFile(".env");
 const [url, paymentId, mode] = process.argv.slice(1);
+if (!process.env.XPAYMENT_WEBHOOK_SECRET) { console.log("XPAYMENT_WEBHOOK_SECRET: missing"); process.exit(1); }
 const body = JSON.stringify({ event: "payment.completed", event_version: "1", delivery_id: crypto.randomUUID(), attempt_number: 1, source: "xpayment", payment_id: paymentId, created_at: new Date().toISOString(), environment: "sandbox" }, null, 2) + "\n";
-const sig = mode === "bad" ? "0".repeat(64) : crypto.createHmac("sha256", process.env.XPAYMENT_WEBHOOK_SECRET ?? "").update(body).digest("hex");
+const sig = mode === "bad" ? "0".repeat(64) : crypto.createHmac("sha256", process.env.XPAYMENT_WEBHOOK_SECRET).update(body).digest("hex");
 const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", "X-xPayment-Signature": sig }, body });
 console.log(mode, "HTTP", res.status);' http://127.0.0.1:3000/webhooks/xpayment <payment_id> good
 ```

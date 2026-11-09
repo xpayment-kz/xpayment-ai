@@ -8,3 +8,5 @@ evals-*/results/
 .superpowers/
 __pycache__/
 .pytest_cache/
+# Session transcripts the eval harness writes beside a case that resumes a history_file
+evals*/**/*-*-*-*-*.jsonl
