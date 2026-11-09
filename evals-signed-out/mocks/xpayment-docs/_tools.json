@@ -1,0 +1,104 @@
+{
+  "tools": [
+    {
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "Describe an endpoint"
+      },
+      "description": "Returns the reference of one endpoint: what it does, the key it needs, its parameters, the request and response fields and the error codes. version is \"v1\" (v1 is stable) or \"v2\" (v2 is beta); method is the HTTP method; path is written as in the reference, with or without the version prefix, e.g. /payments/link or /payments/{paymentID}. An endpoint that does not exist is DOC_SECTION_NOT_FOUND with the closest titles. version, method and path are required. Read-only. The answer has fetched_at (when this copy of the documentation was read from xpayment.kz) and stale (true: the site could not be reached and the answer is the last copy, so tell the person its date).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string",
+            "description": "required: \"v1\" (stable) or \"v2\" (beta)"
+          },
+          "method": {
+            "type": "string",
+            "description": "required: the HTTP method, e.g. POST (case does not matter)"
+          },
+          "path": {
+            "type": "string",
+            "description": "required: the path as the reference writes it, with or without the version prefix, parameters in braces: /payments/link or /payments/{paymentID}"
+          }
+        },
+        "additionalProperties": false
+      },
+      "name": "describe_endpoint"
+    },
+    {
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "Documentation section"
+      },
+      "description": "Returns one section of the documentation by its title (case does not matter): the heading and the text. A topic section comes with the endpoint sections inside it, so a reference section can be long; to read one endpoint use describe_endpoint. A title that does not exist is DOC_SECTION_NOT_FOUND with the closest titles. title is required. Read-only. The answer has fetched_at (when this copy of the documentation was read from xpayment.kz) and stale (true: the site could not be reached and the answer is the last copy, so tell the person its date).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "required: the section title, as list_doc_sections shows it (case does not matter)"
+          }
+        },
+        "additionalProperties": false
+      },
+      "name": "get_doc_section"
+    },
+    {
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "API passport"
+      },
+      "description": "Returns the passport of the xPayment API (ai/manifest.json): which API versions exist and how stable each is (v1 is stable, v2 is beta), when the documentation was last updated, the plugin versions, links to the documentation, llms.txt, llms-full.txt and the OpenAPI files, the addresses of the MCP servers, and the recent changes. Call it first: it says which version to use and what is new. Read-only. The answer has fetched_at (when this copy of the documentation was read from xpayment.kz) and stale (true: the site could not be reached and the answer is the last copy, so tell the person its date).",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "name": "get_manifest"
+    },
+    {
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "Documentation sections"
+      },
+      "description": "Lists the titles of the sections of the xPayment API documentation, in the order of the document: the topics (authentication, webhooks, the sandbox, errors, …) and the reference of every endpoint of API v2 (beta) and API v1 (stable), each titled \"METHOD /v1|/v2/path — summary\". Any title works with get_doc_section. Read-only. The answer has fetched_at (when this copy of the documentation was read from xpayment.kz) and stale (true: the site could not be reached and the answer is the last copy, so tell the person its date).",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "name": "list_doc_sections"
+    },
+    {
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "Search the documentation"
+      },
+      "description": "Searches the documentation for the words of the query (letters and digits, any language; a word in a title counts more than one in the text) and returns up to limit sections, best first: title, a snippet of about 300 characters around the first match and a score. Read a hit in full with get_doc_section, or with describe_endpoint when it is an endpoint. query is required; limit is 1 to 10, 5 when left out. Read-only. The answer has fetched_at (when this copy of the documentation was read from xpayment.kz) and stale (true: the site could not be reached and the answer is the last copy, so tell the person its date).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "required: the words to look for (letters and digits, any language), up to 300 characters"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "how many hits, 1 to 10; 5 when left out"
+          }
+        },
+        "additionalProperties": false
+      },
+      "name": "search_docs"
+    }
+  ]
+}

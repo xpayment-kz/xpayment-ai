@@ -3,6 +3,7 @@ node_modules/
 .venv/
 vendor/
 evals/results/
+evals-*/results/
 .DS_Store
 .superpowers/
 __pycache__/
