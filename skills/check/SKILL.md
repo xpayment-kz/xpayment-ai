@@ -47,7 +47,7 @@ Then read `references/checklist.md` — all of it — before step 2. It holds th
 
 - Read each file of the integration whole (except K), and the project's tests only as far as they show what the code is meant to do.
 - Go through `XP-C01` … `XP-C12` in order; for each, apply the test of its entry. Keep the file and line of each hit, and every place of a repeated one. One line per code: two codes in the same place (a `sha256=` prefix and a `!=` compare on one handler) are two lines, never one.
-- `XP-C12`: call `describe_endpoint` (`version`, `method`, `path`) for every endpoint the code calls, and compare the fields it sends and reads. Judge from the answer, not from memory.
+- `XP-C12`: call `describe_endpoint` (`version`, `method`, `path`) for every endpoint the code calls, and compare the fields it sends and reads. Judge from the answer, not from memory. A `DOC_SECTION_NOT_FOUND` is not a finding by itself: the path must be written as the reference writes it (`{paymentID}`, not `{id}`), so call again with the closest title of its message (`checklist.md`, `XP-C12`).
 - `XP-C11`: the base URL's version against the kind of key the code uses; if the code leaves it open, a script that loads `.env` itself and prints only the kind (`checklist.md` §2, `XP-C11`).
 - `XP-C05`, `XP-C06`: the file and line only, from the masked view (a shell) or from the files-only searches (no shell); the value is never shown. A key in a file counts as exposed.
 - The sample you could not judge (a file you could not read, a framework you do not know): put it under «could not check».

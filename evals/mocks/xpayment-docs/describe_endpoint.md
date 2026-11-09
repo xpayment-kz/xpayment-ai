@@ -3,12 +3,19 @@ type: agent
 ---
 
 You stand in for the `describe_endpoint` tool of the xPayment documentation MCP server (https://api.xpayment.kz/mcp/docs).
-The call names an endpoint by version ("v1" or "v2"), method and path. Below are the real answers for the payment endpoints of API v2 and API v1, recorded on 2026-11-09.
+The call names an endpoint by version ("v1" or "v2"), method and path. Below are the real answers of the server: for the payment endpoints of API v2 and API v1 (recorded on 2026-11-09), and for paths that name a parameter differently (recorded on 2026-11-10).
 
-Find the recorded endpoint with the same version and method (case does not matter) and the same path, where the path may come with or without the /v1 or /v2 prefix and a parameter in braces may have another name ({id} is the same as {paymentID}). Reply with its recorded answer, character for character.
+Match the call the way the real server does (internal/usecase/aidocs/markdown.go):
+- The method is compared without regard to case.
+- The path may come with or without the prefix of its version ("/payments/link" and "/v2/payments/link" are the same for version "v2"); a slash at the end does not count.
+- The rest of the path is compared character for character, the name of a parameter in braces included: for "/payments/{paymentID}", the paths "/payments/{id}", "/payments/{payment_id}" and "/payments/{paymentId}" are different paths and do NOT match.
+- The version must be the recorded endpoint's version: a v2 path does not match a v1 call.
 
-When no recorded endpoint matches, reply exactly:
-{"error":"DOC_SECTION_NOT_FOUND","message":"documentation section not found"}
+When the call matches a recorded endpoint, reply with its recorded answer, character for character.
+
+When it matches none, the answer is the error DOC_SECTION_NOT_FOUND:
+- If the section «Recorded answers for paths that match nothing» has the same version, method and path, reply with that answer, character for character.
+- Otherwise reply {"error":"DOC_SECTION_NOT_FOUND","message":"documentation section not found; the closest titles: <title>; <title>"} with at most five titles of the recorded endpoints (their "title" as written): split the call's path into words (runs of letters and digits, lower-cased) and take the titles that contain at least one of them (lower-cased), more of the words first, and in the order of this file among equals. If no title contains any of the words, reply exactly {"error":"DOC_SECTION_NOT_FOUND","message":"documentation section not found"}.
 
 Reply with the JSON only: no prose, no code fence, no comment.
 
@@ -139,3 +146,103 @@ Reply with the JSON only: no prose, no code fence, no comment.
 ## Recorded endpoint: v1 POST /sandbox/payments/{paymentID}/simulate
 
 {"title":"POST /v1/sandbox/payments/{paymentID}/simulate — Simulate the outcome of a test payment","level":3,"body":"### POST /v1/sandbox/payments/{paymentID}/simulate — Simulate the outcome of a test payment\n\nSandbox only: needs the test cashbox's key (xdev_test_…); a live key gets 403 SANDBOX_ONLY. Ends an unfinished test payment (PENDING, WAITING_FOR_PAYER, QR_TOKEN_CREATED) at once, as Kaspi would: paid → COMPLETED (payment.completed), declined → CANCELLED (payment.cancelled), expired → EXPIRED (payment.expired), failed → FAILED (payment.failed). The webhook goes to your test subscriptions. A payment takes one outcome; any later call answers 409 SANDBOX_OUTCOME_NOT_ALLOWED.\nLimited with the other sandbox writes (creating a payment, a link, a refund): 60 a minute and 1000 a day per user, then 429 RATE_LIMITED with Retry-After.\n\nКлюч: ключ кассы `xdev_…` (в песочнице — тестовый `xdev_test_…`), заголовок `Authorization: Bearer \u003cключ\u003e`.\n\nПараметры:\n- `paymentID` (path, string, обязателен) — Payment ID\n\nТело запроса (JSON, объект):\n- `outcome` (paid | declined | expired | failed, обязателен)\n\nОтвет 200 (JSON, объект):\n- `amount` (number)\n- `cancel_reason` (string)\n- `cancelled_at` (string)\n- `comment` (string)\n- `completed_at` (string)\n- `created_at` (string)\n- `currency` (string)\n- `device_name` (string) — device_name of the device at creation; null when it had none\n- `environment` (live | sandbox) — \"sandbox\" for a payment made with a test key\n- `merchant_order_id` (string)\n- `metadata` (object)\n- `payer_phone` (string)\n- `payment_id` (string)\n- `status` (string)\n- `updated_at` (string)\n- `user_id` (string)\n\nКоды ответов:\n- 200 — OK\n- 400 — VALIDATION_ERROR — outcome is not one of paid, declined, expired, failed\n- 401 — Unauthorized\n- 403 — SANDBOX_ONLY — a live key\n- 404 — PAYMENT_NOT_FOUND — not a test payment of yours\n- 409 — SANDBOX_OUTCOME_NOT_ALLOWED — the payment is no longer unfinished or has its outcome\n- 429 — RATE_LIMITED\n- 500 — Internal Server Error","fetched_at":"2026-11-09T14:19:21Z","stale":false}
+
+# Recorded answers for paths that match nothing
+
+The server answered these as errors (isError). Reply with the text as it is.
+
+## Recorded answer for a path that matches nothing: v2 GET /payments/{id}
+
+{"error":"DOC_SECTION_NOT_FOUND","message":"documentation section not found; the closest titles: GET /v2/payments/{paymentID} — Get a payment; POST /v2/payments/{paymentID}/cancel — Cancel a payment; GET /v2/payments/{paymentID}/refunds — List refunds of a payment; POST /v2/payments/{paymentID}/refund — Refund a payment; POST /v2/sandbox/payments/{paymentID}/simulate — Simulate the outcome of a test payment"}
+
+## Recorded answer for a path that matches nothing: v2 GET /payments/{payment_id}
+
+{"error":"DOC_SECTION_NOT_FOUND","message":"documentation section not found; the closest titles: GET /v2/payments/{paymentID} — Get a payment; POST /v2/payments/{paymentID}/cancel — Cancel a payment; GET /v2/payments/{paymentID}/refunds — List refunds of a payment; POST /v2/payments/{paymentID}/refund — Refund a payment; POST /v2/sandbox/payments/{paymentID}/simulate — Simulate the outcome of a test payment"}
+
+## Recorded answer for a path that matches nothing: v2 GET /payments/{paymentId}
+
+{"error":"DOC_SECTION_NOT_FOUND","message":"documentation section not found; the closest titles: GET /v2/payments/{paymentID} — Get a payment; POST /v2/payments/{paymentID}/cancel — Cancel a payment; GET /v2/payments/{paymentID}/refunds — List refunds of a payment; POST /v2/payments/{paymentID}/refund — Refund a payment; POST /v2/sandbox/payments/{paymentID}/simulate — Simulate the outcome of a test payment"}
+
+## Recorded answer for a path that matches nothing: v2 POST /payments/{id}/refund
+
+{"error":"DOC_SECTION_NOT_FOUND","message":"documentation section not found; the closest titles: GET /v2/payments/{paymentID}/refunds — List refunds of a payment; POST /v2/payments/{paymentID}/refund — Refund a payment; GET /v1/payments/{paymentID}/refunds — List refunds for a payment; POST /v1/payments/{paymentID}/refund — Create a refund; GET /v2/payments/{paymentID} — Get a payment"}
+
+## Recorded answer for a path that matches nothing: v2 POST /payments/{id}/cancel
+
+{"error":"DOC_SECTION_NOT_FOUND","message":"documentation section not found; the closest titles: POST /v2/payments/{paymentID}/cancel — Cancel a payment; POST /v1/payments/{paymentID}/cancel — Cancel a payment; GET /v2/payments/{paymentID} — Get a payment; GET /v2/payments/{paymentID}/refunds — List refunds of a payment; POST /v2/payments/{paymentID}/refund — Refund a payment"}
+
+## Recorded answer for a path that matches nothing: v2 GET /payments/{id}/refunds
+
+{"error":"DOC_SECTION_NOT_FOUND","message":"documentation section not found; the closest titles: GET /v2/payments/{paymentID}/refunds — List refunds of a payment; GET /v1/payments/{paymentID}/refunds — List refunds for a payment; GET /v2/payments/{paymentID} — Get a payment; POST /v2/payments/{paymentID}/cancel — Cancel a payment; GET /v2/refunds/{refundID} — Get a refund"}
+
+## Recorded answer for a path that matches nothing: v2 GET /v2/payments/{id}
+
+{"error":"DOC_SECTION_NOT_FOUND","message":"documentation section not found; the closest titles: GET /v2/payments/{paymentID} — Get a payment; POST /v2/payments/{paymentID}/cancel — Cancel a payment; GET /v2/payments/{paymentID}/refunds — List refunds of a payment; POST /v2/payments/{paymentID}/refund — Refund a payment; POST /v2/sandbox/payments/{paymentID}/simulate — Simulate the outcome of a test payment"}
+
+## Recorded answer for a path that matches nothing: v2 GET /v2/payments/{payment_id}
+
+{"error":"DOC_SECTION_NOT_FOUND","message":"documentation section not found; the closest titles: GET /v2/payments/{paymentID} — Get a payment; POST /v2/payments/{paymentID}/cancel — Cancel a payment; GET /v2/payments/{paymentID}/refunds — List refunds of a payment; POST /v2/payments/{paymentID}/refund — Refund a payment; POST /v2/sandbox/payments/{paymentID}/simulate — Simulate the outcome of a test payment"}
+
+## Recorded answer for a path that matches nothing: v2 GET /v2/payments/{paymentId}
+
+{"error":"DOC_SECTION_NOT_FOUND","message":"documentation section not found; the closest titles: GET /v2/payments/{paymentID} — Get a payment; POST /v2/payments/{paymentID}/cancel — Cancel a payment; GET /v2/payments/{paymentID}/refunds — List refunds of a payment; POST /v2/payments/{paymentID}/refund — Refund a payment; POST /v2/sandbox/payments/{paymentID}/simulate — Simulate the outcome of a test payment"}
+
+## Recorded answer for a path that matches nothing: v2 POST /v2/payments/{id}/refund
+
+{"error":"DOC_SECTION_NOT_FOUND","message":"documentation section not found; the closest titles: GET /v2/payments/{paymentID}/refunds — List refunds of a payment; POST /v2/payments/{paymentID}/refund — Refund a payment; GET /v2/payments/{paymentID} — Get a payment; POST /v2/payments/{paymentID}/cancel — Cancel a payment; GET /v2/refunds/{refundID} — Get a refund"}
+
+## Recorded answer for a path that matches nothing: v2 POST /v2/payments/{id}/cancel
+
+{"error":"DOC_SECTION_NOT_FOUND","message":"documentation section not found; the closest titles: POST /v2/payments/{paymentID}/cancel — Cancel a payment; GET /v2/payments/{paymentID} — Get a payment; GET /v2/payments/{paymentID}/refunds — List refunds of a payment; POST /v2/payments/{paymentID}/refund — Refund a payment; POST /v2/sandbox/payments/{paymentID}/simulate — Simulate the outcome of a test payment"}
+
+## Recorded answer for a path that matches nothing: v2 GET /v2/payments/{id}/refunds
+
+{"error":"DOC_SECTION_NOT_FOUND","message":"documentation section not found; the closest titles: GET /v2/payments/{paymentID}/refunds — List refunds of a payment; GET /v2/payments/{paymentID} — Get a payment; POST /v2/payments/{paymentID}/cancel — Cancel a payment; GET /v2/refunds/{refundID} — Get a refund; POST /v2/payments/{paymentID}/refund — Refund a payment"}
+
+## Recorded answer for a path that matches nothing: v1 GET /payments/{id}
+
+{"error":"DOC_SECTION_NOT_FOUND","message":"documentation section not found; the closest titles: GET /v2/payments/{paymentID} — Get a payment; POST /v2/payments/{paymentID}/cancel — Cancel a payment; GET /v2/payments/{paymentID}/refunds — List refunds of a payment; POST /v2/payments/{paymentID}/refund — Refund a payment; POST /v2/sandbox/payments/{paymentID}/simulate — Simulate the outcome of a test payment"}
+
+## Recorded answer for a path that matches nothing: v1 GET /payments/{payment_id}
+
+{"error":"DOC_SECTION_NOT_FOUND","message":"documentation section not found; the closest titles: GET /v2/payments/{paymentID} — Get a payment; POST /v2/payments/{paymentID}/cancel — Cancel a payment; GET /v2/payments/{paymentID}/refunds — List refunds of a payment; POST /v2/payments/{paymentID}/refund — Refund a payment; POST /v2/sandbox/payments/{paymentID}/simulate — Simulate the outcome of a test payment"}
+
+## Recorded answer for a path that matches nothing: v1 GET /payments/{paymentId}
+
+{"error":"DOC_SECTION_NOT_FOUND","message":"documentation section not found; the closest titles: GET /v2/payments/{paymentID} — Get a payment; POST /v2/payments/{paymentID}/cancel — Cancel a payment; GET /v2/payments/{paymentID}/refunds — List refunds of a payment; POST /v2/payments/{paymentID}/refund — Refund a payment; POST /v2/sandbox/payments/{paymentID}/simulate — Simulate the outcome of a test payment"}
+
+## Recorded answer for a path that matches nothing: v1 POST /payments/{id}/refund
+
+{"error":"DOC_SECTION_NOT_FOUND","message":"documentation section not found; the closest titles: GET /v2/payments/{paymentID}/refunds — List refunds of a payment; POST /v2/payments/{paymentID}/refund — Refund a payment; GET /v1/payments/{paymentID}/refunds — List refunds for a payment; POST /v1/payments/{paymentID}/refund — Create a refund; GET /v2/payments/{paymentID} — Get a payment"}
+
+## Recorded answer for a path that matches nothing: v1 POST /payments/{id}/cancel
+
+{"error":"DOC_SECTION_NOT_FOUND","message":"documentation section not found; the closest titles: POST /v2/payments/{paymentID}/cancel — Cancel a payment; POST /v1/payments/{paymentID}/cancel — Cancel a payment; GET /v2/payments/{paymentID} — Get a payment; GET /v2/payments/{paymentID}/refunds — List refunds of a payment; POST /v2/payments/{paymentID}/refund — Refund a payment"}
+
+## Recorded answer for a path that matches nothing: v1 GET /payments/{id}/refunds
+
+{"error":"DOC_SECTION_NOT_FOUND","message":"documentation section not found; the closest titles: GET /v2/payments/{paymentID}/refunds — List refunds of a payment; GET /v1/payments/{paymentID}/refunds — List refunds for a payment; GET /v2/payments/{paymentID} — Get a payment; POST /v2/payments/{paymentID}/cancel — Cancel a payment; GET /v2/refunds/{refundID} — Get a refund"}
+
+## Recorded answer for a path that matches nothing: v1 GET /v1/payments/{id}
+
+{"error":"DOC_SECTION_NOT_FOUND","message":"documentation section not found; the closest titles: GET /v1/payments/{paymentID} — Get a payment; POST /v1/payments/{paymentID}/cancel — Cancel a payment; GET /v1/payments/{paymentID}/refunds — List refunds for a payment; POST /v1/payments/{paymentID}/refund — Create a refund; POST /v1/sandbox/payments/{paymentID}/simulate — Simulate the outcome of a test payment"}
+
+## Recorded answer for a path that matches nothing: v1 GET /v1/payments/{payment_id}
+
+{"error":"DOC_SECTION_NOT_FOUND","message":"documentation section not found; the closest titles: GET /v1/payments/{paymentID} — Get a payment; POST /v1/payments/{paymentID}/cancel — Cancel a payment; GET /v1/payments/{paymentID}/refunds — List refunds for a payment; POST /v1/payments/{paymentID}/refund — Create a refund; POST /v1/sandbox/payments/{paymentID}/simulate — Simulate the outcome of a test payment"}
+
+## Recorded answer for a path that matches nothing: v1 GET /v1/payments/{paymentId}
+
+{"error":"DOC_SECTION_NOT_FOUND","message":"documentation section not found; the closest titles: GET /v1/payments/{paymentID} — Get a payment; POST /v1/payments/{paymentID}/cancel — Cancel a payment; GET /v1/payments/{paymentID}/refunds — List refunds for a payment; POST /v1/payments/{paymentID}/refund — Create a refund; POST /v1/sandbox/payments/{paymentID}/simulate — Simulate the outcome of a test payment"}
+
+## Recorded answer for a path that matches nothing: v1 POST /v1/payments/{id}/refund
+
+{"error":"DOC_SECTION_NOT_FOUND","message":"documentation section not found; the closest titles: GET /v1/payments/{paymentID}/refunds — List refunds for a payment; POST /v1/payments/{paymentID}/refund — Create a refund; GET /v2/payments/{paymentID}/refunds — List refunds of a payment; POST /v2/payments/{paymentID}/refund — Refund a payment; GET /v1/payments/{paymentID} — Get a payment"}
+
+## Recorded answer for a path that matches nothing: v1 POST /v1/payments/{id}/cancel
+
+{"error":"DOC_SECTION_NOT_FOUND","message":"documentation section not found; the closest titles: POST /v1/payments/{paymentID}/cancel — Cancel a payment; POST /v2/payments/{paymentID}/cancel — Cancel a payment; GET /v1/payments/{paymentID} — Get a payment; GET /v1/payments/{paymentID}/refunds — List refunds for a payment; POST /v1/payments/{paymentID}/refund — Create a refund"}
+
+## Recorded answer for a path that matches nothing: v1 GET /v1/payments/{id}/refunds
+
+{"error":"DOC_SECTION_NOT_FOUND","message":"documentation section not found; the closest titles: GET /v1/payments/{paymentID}/refunds — List refunds for a payment; GET /v2/payments/{paymentID}/refunds — List refunds of a payment; GET /v1/payments/{paymentID} — Get a payment; POST /v1/payments/{paymentID}/cancel — Cancel a payment; GET /v1/refunds/{refundID} — Get a refund"}
