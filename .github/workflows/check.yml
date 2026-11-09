@@ -15,8 +15,33 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Script tests
-        run: node --test 'scripts/*.test.mjs'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Install Python requirements of the sample projects
+        run: python -m pip install -r tests/projects/shop-python/requirements.txt -r tests/projects/broken-python/requirements.txt
+      - name: Script, fake xPayment and acceptance tests
+        run: node --test 'scripts/*.test.mjs' 'tests/fake-xpayment/*.test.mjs' 'tests/acceptance/*.test.mjs'
+        env:
+          XPAYMENT_PYTHON: python
+      - name: Sample project shop-node
+        working-directory: tests/projects/shop-node
+        run: npm ci && node --test
+      - name: Sample project legacy-v1-node
+        working-directory: tests/projects/legacy-v1-node
+        run: npm ci && node --test
+      - name: Sample project shop-python
+        working-directory: tests/projects/shop-python
+        run: python -m pytest
+      - name: Sample project broken-python
+        working-directory: tests/projects/broken-python
+        run: python -m pytest
+      - name: Sample project shop-php
+        working-directory: tests/projects/shop-php
+        run: php tests/run.php
       - name: Plugin check
         run: node scripts/plugin-check.mjs
       - name: Validate the plugin with Claude Code

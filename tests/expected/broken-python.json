@@ -1,0 +1,14 @@
+[
+  { "code": "XP-C01", "file": "webhooks.py", "hint": "The expected signature is built as \"sha256=\" + hex digest, but X-xPayment-Signature is the bare lowercase hex digest, so every real delivery is refused." },
+  { "code": "XP-C02", "file": "webhooks.py", "hint": "The HMAC is computed over json.dumps of the parsed body, not over the raw request bytes; any difference in whitespace or key order breaks the signature." },
+  { "code": "XP-C03", "file": "webhooks.py", "hint": "The signature is compared with !=, not with a constant-time comparison such as hmac.compare_digest." },
+  { "code": "XP-C04", "file": "legacy_hooks.py", "hint": "POST /hooks/xpayment/refunds changes orders without checking the webhook signature at all." },
+  { "code": "XP-C05", "file": "config.py", "hint": "WEBHOOK_SECRET falls back to a plain string written in the code when XPAYMENT_WEBHOOK_SECRET is not set." },
+  { "code": "XP-C06", "file": "config.py", "hint": "The API key is written in the source as the default of XPAYMENT_API_KEY, so it ends up in git." },
+  { "code": "XP-C07", "file": "xpayment.py", "hint": "create_link sends no X-Idempotency-Key header, so a retry can create a second payment link for the same order." },
+  { "code": "XP-C08", "file": "webhooks.py", "hint": "The order status is read from body.get(\"status\"), but the webhook body carries no status; the handler never does GET /v2/payments/{id} to learn it." },
+  { "code": "XP-C09", "file": "webhooks.py", "hint": "STATUS_TO_ORDER maps only COMPLETED; EXPIRED, CANCELLED, FAILED and refunds never change the order." },
+  { "code": "XP-C10", "file": "webhooks.py", "hint": "delivery_id is never stored, so a repeated delivery runs again (the receipt is sent every time)." },
+  { "code": "XP-C11", "file": "xpayment.py", "hint": "get_payment calls /v2 with config.DEVICE_KEY, a cashbox key (xdev_) that only works on /v1; /v2 needs an xapi_ key." },
+  { "code": "XP-C12", "file": "xpayment.py", "hint": "create_link sends callback_url, a field that POST /v2/payments/link does not have in its OpenAPI schema." }
+]
