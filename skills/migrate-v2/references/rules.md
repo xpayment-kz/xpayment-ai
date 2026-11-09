@@ -1,6 +1,6 @@
 # Rules for every xPayment skill
 
-These rules hold for every skill of the xPayment plugin (`ask`, `integrate`, `migrate-v2`, `check`). A skill adds its own steps on top of them. Where a skill and these rules disagree, these rules win. Where the xPayment documentation and anything here disagree, the documentation wins: follow it and tell the person what differs.
+These rules hold for every skill of the xPayment plugin (`ask`, `integrate`, `migrate-v2`, `check`). A skill adds steps and may restrict you further; it never loosens these rules. Where the xPayment documentation and anything here disagree, the documentation wins: follow it and tell the person what differs.
 
 The plugin connects two MCP servers. Tools are named here by their plain names; your client may show them with a prefix.
 
@@ -81,7 +81,8 @@ Rules:
 ## Secrets
 
 - **Live keys and live webhook secrets never pass through the conversation.** The tools that make them (`create_api_key` and `create_webhook` on live, `rotate_webhook_secret` on live) answer a `reveal_url`: a one-time page, valid for an hour, where the signed-in person sees the value once. Give the link and say where to put the value (the environment variable your code reads, e.g. in `.env`). Never ask the person to paste a key or a secret into the chat.
-- **Test keys and test secrets** (sandbox) come back directly. In code mode write them into `.env` yourself; first make sure `.env` is listed in `.gitignore` (add it if not).
+- **Test keys and test secrets** (sandbox) come back directly. In code mode write them into `.env` yourself.
+- **`.env` in `.gitignore` first.** In code mode, before you tell the person where to put a live value, and before you write test values, make sure `.env` is listed in `.gitignore` (add it if not).
 - **Never read `.env`** — not with a file tool, not with `cat`, `grep` or a script that prints it. To check code with a key, run a small script on the project's stack that loads `.env` itself and prints only the outcome (status code, OK or the error code), never the key.
 - Never put a key or a secret into code, a committed file, a log, a commit message or your reply. No hard-coded fallback values.
 - A webhook secret is never empty. The webhook handler refuses an event when the secret is missing or the signature does not match.

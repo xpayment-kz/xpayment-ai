@@ -1,5 +1,5 @@
 ---
 type: regex
 target: trace
-pattern: 'references/docs/(llms-full\.txt|SNAPSHOT\.md|manifest\.json)'
+pattern: '"(file_path|path)"\s*:\s*"[^"]*references/docs/'
 ---
