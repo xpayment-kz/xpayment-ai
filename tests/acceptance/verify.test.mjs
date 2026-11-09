@@ -180,6 +180,43 @@ test('a handler that signs a re-serialised body never accepts a real delivery', 
   assert.equal(row(r.rows, /signed payment\.completed/).ok, false);
 });
 
+test('a project that never loads .env (the process gets only PORT and the fake URL) does not pass', () => {
+  const dir = copyProject('legacy-v1-node', {
+    env: legacyEnv(),
+    patch: { 'server.js': ["if (fs.existsSync('.env')) process.loadEnvFile('.env');", ''] },
+  });
+  const r = runVerify(dir, ['--stack', 'node', '--api', 'v1']);
+  assert.equal(r.status, 1, r.out + r.err);
+  // key and secret are empty in its environment, so it refuses to start
+  const starts = row(r.rows, /project starts/);
+  assert.equal(starts.ok, false);
+  assert.match(starts.detail, /exited with code 1/);
+  assert.ok(!(r.out + r.err).includes(V1_KEY) && !(r.out + r.err).includes(HOOK_SECRET));
+});
+
+test('a project that never loads .env and does not mind empty settings fails the key and secret rows', () => {
+  const dir = copyProject('legacy-v1-node', {
+    env: legacyEnv(),
+    patch: {
+      'server.js': [
+        "if (fs.existsSync('.env')) process.loadEnvFile('.env');",
+        '',
+      ],
+    },
+  });
+  // also drop the guard that makes it refuse to start
+  const file = path.join(dir, 'server.js');
+  const text = fs.readFileSync(file, 'utf8');
+  const guard = /if \(!config\.deviceKey \|\| !config\.webhookSecret\) \{[\s\S]*?\n\}\n/;
+  assert.match(text, guard);
+  fs.writeFileSync(file, text.replace(guard, ''));
+  const r = runVerify(dir, ['--stack', 'node', '--api', 'v1']);
+  assert.equal(r.status, 1, r.out + r.err);
+  assert.ok(row(r.rows, /project starts/).ok, 'it starts without the settings');
+  assert.equal(row(r.rows, /authorized with an xdev_/).ok, false, 'no key reached the fake');
+  assert.equal(row(r.rows, /signed payment\.completed/).ok, false, 'the empty secret cannot match the signature');
+});
+
 test('a project that does not start is reported, without the values of .env', () => {
   const dir = copyProject('legacy-v1-node', {
     env: { ...legacyEnv(), XPAYMENT_WEBHOOK_SECRET: '' },

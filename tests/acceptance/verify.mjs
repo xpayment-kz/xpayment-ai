@@ -3,12 +3,16 @@
 //
 //   node tests/acceptance/verify.mjs <project-dir> --stack node|python|php [--api v1|v2] [--python <path>]
 //
-// It reads the project's .env (this is our script, not the AI; the values are never printed),
-// starts the fake xPayment on a free port and the project with the start command of its stack:
+// It reads the project's .env only to get XPAYMENT_WEBHOOK_SECRET for signing (this is our script,
+// not the AI; the values are never printed). It starts the fake xPayment on a free port and the
+// project with the start command of its stack:
 //   node    node server.js
 //   python  <python> -m uvicorn main:app --host 127.0.0.1 --port $PORT
 //   php     php -S 127.0.0.1:$PORT -t public public/index.php
-// with PORT and XPAYMENT_BASE_URL (the fake) added to the .env values. Then it creates orders,
+// The project gets the inherited environment WITHOUT any XPAYMENT_* variable, plus PORT and
+// XPAYMENT_BASE_URL (the fake). Nothing from .env is injected: a project that never loads its own
+// .env runs with empty settings and fails. (Loaders that do not override an existing variable, like
+// Node's process.loadEnvFile or python-dotenv, still let the fake URL win.) Then it creates orders,
 // reads what the project sent to the fake (GET /__requests), "pays" the payments and delivers
 // signed webhooks (HMAC-SHA256 of the raw body with XPAYMENT_WEBHOOK_SECRET, lowercase hex, header
 // X-xPayment-Signature, no "sha256=" prefix), and prints a table of PASS/FAIL rows.
@@ -295,7 +299,7 @@ export async function verify({ dir, stack, api = 'v2', python = 'python3' }) {
   const port = await freePort();
   const project = `http://127.0.0.1:${port}`;
   const baseEnv = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('XPAYMENT_')));
-  const env = { ...baseEnv, ...dotenv, PORT: String(port), XPAYMENT_BASE_URL: fake.url, PYTHONUNBUFFERED: '1', PYTHONDONTWRITEBYTECODE: '1' };
+  const env = { ...baseEnv, PORT: String(port), XPAYMENT_BASE_URL: fake.url, PYTHONUNBUFFERED: '1', PYTHONDONTWRITEBYTECODE: '1' };
   const { cmd, args } = startCommand(stack, python, port);
   const child = spawn(cmd, args, { cwd: dir, env, stdio: ['ignore', 'pipe', 'pipe'] });
   let output = '';
