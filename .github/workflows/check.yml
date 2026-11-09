@@ -1,0 +1,25 @@
+name: check
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Script tests
+        run: node --test 'scripts/*.test.mjs'
+      - name: Plugin check
+        run: node scripts/plugin-check.mjs
+      - name: Validate the plugin with Claude Code
+        run: |
+          npm i -g @anthropic-ai/claude-code@2.1.319
+          claude plugin validate . --strict

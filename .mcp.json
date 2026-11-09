@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "xpayment-docs": {
+      "type": "http",
+      "url": "https://api.xpayment.kz/mcp/docs"
+    },
+    "xpayment": {
+      "type": "http",
+      "url": "https://api.xpayment.kz/mcp"
+    }
+  }
+}

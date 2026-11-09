@@ -1,0 +1,14 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "xpayment",
+  "version": "0.1.0",
+  "description": "Accept Kaspi Pay payments through xPayment: your AI sets up the account, the sandbox and the code, step by step.",
+  "author": {
+    "name": "xPayment",
+    "url": "https://xpayment.kz"
+  },
+  "homepage": "https://xpayment.kz/ai",
+  "repository": "https://github.com/xpayment-kz/xpayment-ai",
+  "license": "MIT",
+  "keywords": ["payments", "kaspi", "kaspi-pay", "kazakhstan", "mcp", "xpayment"]
+}

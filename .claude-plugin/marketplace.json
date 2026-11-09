@@ -1,0 +1,15 @@
+{
+  "name": "xpayment",
+  "owner": {
+    "name": "xPayment",
+    "url": "https://xpayment.kz"
+  },
+  "description": "The xPayment plugin for Claude and ChatGPT.",
+  "plugins": [
+    {
+      "name": "xpayment",
+      "source": "./",
+      "description": "Accept Kaspi Pay payments through xPayment with your AI assistant."
+    }
+  ]
+}
