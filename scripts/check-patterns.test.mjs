@@ -285,9 +285,15 @@ test('safe-search grep forms: K from files-only searches, a content search that 
     };
     const ex = ['--exclude=.env*', '--exclude-dir=.git', '--exclude-dir=node_modules'];
     assert.deepEqual(names(run(['-rIl', '-E', ...ex, '-e', KEY_SHAPE, '.']), dir), ['.github/workflows/ci.yml', 'scripts/refund.js']);
-    assert.deepEqual(names(run(['-rIil', '-E', ...ex, '-f', '/dev/stdin', '.'], SECRET_LITERAL + '\n'), dir), ['settings.py']);
+    // the regex goes in through a quoted heredoc, as the text says (a real shell, so /dev/stdin is the heredoc)
+    const heredoc = (args) => {
+      const r = spawnSync('bash', ['-c', `${GREP} ${args} <<'RE'\n${SECRET_LITERAL}\nRE\n`], { cwd: dir, encoding: 'utf8' });
+      assert.ok(r.status === 0 || r.status === 1, `grep failed (${r.status}): ${r.stderr}`);
+      return r.stdout;
+    };
+    assert.deepEqual(names(heredoc(`-rIil -E ${ex.map((e) => `'${e}'`).join(' ')} -f /dev/stdin .`), dir), ['settings.py']);
     assert.deepEqual(names(run(['-l', '-E', '-e', KEY_SHAPE, '.env.example']), dir), ['.env.example']);
-    assert.deepEqual(names(run(['-il', '-E', '-f', '/dev/stdin', '.env.example'], SECRET_LITERAL + '\n'), dir), ['.env.example']);
+    assert.deepEqual(names(heredoc('-il -E -f /dev/stdin .env.example'), dir), ['.env.example']);
     // step 6: grep --exclude matches the base name only
     const leftOut = ['--exclude=.env*', '--exclude=refund.js', '--exclude=ci.yml', '--exclude=settings.py'];
     const out = run(['-rIn', '-E', ...leftOut, '/v1', '.']);
@@ -312,8 +318,13 @@ test('safe-search rg forms: --hidden finds the CI file, -g with a path leaves a 
     };
     const ex = ['--hidden', '-g', '!.env*', '-g', '!.git', '-g', '!node_modules'];
     assert.deepEqual(names(run(['-l', ...ex, '-e', KEY_SHAPE, '.']), dir), ['.github/workflows/ci.yml', 'scripts/refund.js']);
-    assert.deepEqual(names(run(['-l', '-i', ...ex, '-f', '-', '.'], SECRET_LITERAL + '\n'), dir), ['settings.py']);
-    assert.deepEqual(names(run(['-l', '-i', '-f', '-', '.env.example'], SECRET_LITERAL + '\n'), dir), ['.env.example']);
+    const heredoc = (args) => {
+      const r = spawnSync('bash', ['-c', `'${RG}' ${args} <<'RE'\n${SECRET_LITERAL}\nRE\n`], { cwd: dir, encoding: 'utf8' });
+      assert.ok(r.status === 0 || r.status === 1, `rg failed (${r.status}): ${r.stderr}`);
+      return r.stdout;
+    };
+    assert.deepEqual(names(heredoc(`-l -i ${ex.map((e) => `'${e}'`).join(' ')} -f - .`), dir), ['settings.py']);
+    assert.deepEqual(names(heredoc('-l -i -f - .env.example'), dir), ['.env.example']);
     const out = run(['-n', '--hidden', '-g', '!.env*', '-g', '!scripts/refund.js', '-g', '!.github/workflows/ci.yml', '-g', '!settings.py', '/v1', '.']);
     assert.ok(!/zz/.test(out), `a value is in the output:\n${out}`);
     assert.match(out, /other\/scripts\/refund\.js:1:/, 'a path glob leaves only that file out');
