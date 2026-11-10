@@ -120,13 +120,13 @@ codex plugin add xpayment@xpayment
 codex mcp login xpayment
 ```
 
-xPayment also supports dynamic client registration (DCR), and that is the form checked on 2026-11-10:
+Codex identifies itself with its published client document (CIMD, `https://chatgpt.com/oauth/codex/client.json`), your browser opens «Войти через xPayment» with a `127.0.0.1` callback, you approve, and Codex reports that you are logged in. After that `whoami` returned the owner, the seven rights and the client name «Codex». Both this form and the dynamic client registration (DCR) form below were checked on 2026-11-10:
 
 ```sh
 codex mcp login xpayment --oauth-client-registration dcr
 ```
 
-Codex registers itself as a client, your browser opens «Войти через xPayment» with a `127.0.0.1` callback, you approve, and Codex reports that you are logged in. After that `whoami` returned the owner and the seven rights.
+The browser that opens is your default one. If you are signed in to xPayment with another account there, open the printed link in the browser where you use the right account (the callback to `127.0.0.1` works from any browser on the same computer).
 
 **Call a skill.** Name it (`xpayment:ask`, `xpayment:integrate`, …) or describe the task. When you run `codex exec` from a script, pass `</dev/null` as its input (our check needed it).
 
