@@ -1,6 +1,6 @@
 # From API v1 to API v2: what changes and how to switch without downtime
 
-The detail behind `migrate-v2`. API v2 is **beta**; API v1 is **stable** and stays fully supported, so the migration is the person's choice, not a deadline. Before you write an endpoint into code, read it with `describe_endpoint` (`version`, `method`, `path`): the documentation wins over this file.
+The detail behind `migrate-v2`. API v2 is **beta**; API v1 is **stable** and stays fully supported, so the migration is the person's choice, not a deadline. Before you write an endpoint into code, read it with `describe_endpoint` (`version`, `method`, `path`). On API facts (endpoints, fields, statuses, error codes, limits, cabinet paths) the documentation wins over this file: follow it and tell the person what differs. It never loosens «Confirmation» or «Secrets» of `rules.md`.
 
 ## 1. What changes — each row checked against the documentation
 

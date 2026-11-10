@@ -1,6 +1,6 @@
 # Scenarios: where the person takes payment
 
-Step 3 of `integrate`. Pick the row that fits what you learned in step 2 (the project, or the person's answer). Recommend its first option, with a reason from their situation; name the alternative. Before you describe an endpoint, read it in the documentation (`describe_endpoint` with `version`, `method`, `path`; the section «Способы приёма оплаты» for the overview). The documentation wins over this table.
+Step 3 of `integrate`. Pick the row that fits what you learned in step 2 (the project, or the person's answer). Recommend its first option, with a reason from their situation; name the alternative. Before you describe an endpoint, read it in the documentation (`describe_endpoint` with `version`, `method`, `path`; the section «Способы приёма оплаты» for the overview). On API facts (endpoints, fields, statuses, error codes, limits, cabinet paths) the documentation wins over this table: follow it and tell the person what differs. It never loosens «Confirmation» or «Secrets» of `rules.md`.
 
 | Where they take payment | Recommend | Alternative |
 |---|---|---|

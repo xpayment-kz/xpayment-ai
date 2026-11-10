@@ -1,6 +1,6 @@
 # Code: the client and the webhook handler
 
-Step 7 of `integrate`, code mode (in chat mode you hand over the same files complete). Write for the project's own stack, framework and style; the examples below show the parts that must be right, not a layout to copy. Before you call an endpoint, read it with `describe_endpoint` (`version`, `method`, `path`) and the section «Webhooks» with `get_doc_section`: the documentation wins over this file.
+Step 7 of `integrate`, code mode (in chat mode you hand over the same files complete). Write for the project's own stack, framework and style; the examples below show the parts that must be right, not a layout to copy. Before you call an endpoint, read it with `describe_endpoint` (`version`, `method`, `path`) and the section «Webhooks» with `get_doc_section`. On API facts (endpoints, fields, statuses, error codes, limits, cabinet paths) the documentation wins over this file: follow it and tell the person what differs. It never loosens «Confirmation» or «Secrets» of `rules.md`.
 
 ## 1. Read the project first
 

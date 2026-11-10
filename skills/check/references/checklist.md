@@ -1,6 +1,6 @@
 # Checklist: what to look for, the account checks, the report
 
-Used by `check`. The documentation wins over this file: before you judge the code, read the section «Webhooks» (`get_doc_section`) and, for every endpoint the code calls, `describe_endpoint`. Where they differ from what is written here, follow the documentation and tell the person what differs.
+Used by `check`. Before you judge the code, read the section «Webhooks» (`get_doc_section`) and, for every endpoint the code calls, `describe_endpoint`. On API facts (endpoints, fields, statuses, error codes, limits, cabinet paths) the documentation wins over this file: follow it and tell the person what differs. It never loosens «Confirmation» or «Secrets» of `rules.md`.
 
 ## 1. Searching the project (it may hold keys)
 

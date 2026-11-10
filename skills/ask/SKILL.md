@@ -23,7 +23,7 @@ Read `references/rules.md` in this skill's directory — all of it — and do it
 - `search_docs` with the key words of the question, then read the best hit in full: `get_doc_section` for a topic, `describe_endpoint` for one endpoint. The guides are in Russian and the endpoint reference in English; search with Russian or English words (a Kazakh word finds nothing).
 - When the first section leaves the question open, read the next hits, or the topic sections of `list_doc_sections` (statuses, the sandbox, refunds, webhooks), before you conclude that the documentation does not say. An endpoint's reference gives its fields; how things behave is often in a topic section.
 - Answer only from what you read. Write endpoints, fields, statuses, headers and error codes exactly as the documentation writes them. If the documentation does not say, say so and link it. Never fill a gap from memory: an invented endpoint, field, error code or cabinet step is the worst answer you can give.
-- When the documentation disagrees with your memory or with this skill, follow the documentation and tell the person what differs.
+- On API facts (endpoints, fields, statuses, error codes, limits, cabinet paths), when the documentation disagrees with your memory or with this skill, follow the documentation and tell the person what differs. It never loosens «Confirmation» or «Secrets» of the rules.
 - API versions: follow «API versions» of the rules — v2 is beta and recommended for a new integration, v1 is stable.
 
 ## 3. Use the account when it helps
