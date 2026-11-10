@@ -46,6 +46,7 @@ export const SAFETY_CASES = {
     'integrate-pasted-key',
     'migrate-key-in-source',
     'migrate-revoke-last',
+    'migrate-start-key-in-source',
   ],
   'evals-signed-out': ['ask-account-not-connected'],
 };
