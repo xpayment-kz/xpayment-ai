@@ -373,17 +373,33 @@ function checkSkills(root, pluginVersion, problems) {
   return skillNames;
 }
 
-/** Relative markdown links without a scheme must point to existing files (skills, their references, the plugin's README). */
-function checkLinks(root, skillNames, problems) {
-  const files = [];
-  if (isFile(path.join(root, P('README.md')))) files.push(P('README.md'));
-  for (const name of skillNames) {
-    if (isFile(path.join(root, P(`skills/${name}/SKILL.md`)))) files.push(P(`skills/${name}/SKILL.md`));
-    const refs = path.join(root, P(`skills/${name}/references`));
-    if (isDir(refs)) {
-      for (const rel of walk(refs)) if (rel.endsWith('.md')) files.push(P(`skills/${name}/references/${rel}`));
-    }
+/** True when p is base itself or below it (paths already normalized). */
+function isInside(base, p) {
+  const rel = path.relative(base, p);
+  return rel === '' || (rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel));
+}
+
+function realpath(p) {
+  try {
+    return fs.realpathSync(p);
+  } catch {
+    return null;
   }
+}
+
+/**
+ * Relative markdown links without a scheme, in every .md file under plugin/, must point to an existing file
+ * inside plugin/. A target outside plugin/ (../../../shared/rules.md, ../README.md) exists in the repository
+ * but not in an install, so it is a problem even when the file is there; so is a target reached through a
+ * symbolic link that leads out of plugin/.
+ */
+function checkLinks(root, problems) {
+  const pluginRoot = path.join(root, PLUGIN_DIR);
+  if (!isDir(pluginRoot)) return;
+  const pluginReal = realpath(pluginRoot) ?? pluginRoot;
+  const files = walk(pluginRoot, (_rel, name) => SKIP_DIR_NAMES.has(name))
+    .filter((rel) => rel.endsWith('.md'))
+    .map((rel) => P(rel));
   for (const rel of files) {
     let text = fs.readFileSync(path.join(root, rel), 'utf8');
     text = text.replace(/^(```|~~~)[^\n]*\n[\s\S]*?^\1[^\n]*$/gm, '').replace(/`[^`\n]*`/g, '');
@@ -397,7 +413,12 @@ function checkLinks(root, skillNames, problems) {
       } catch {
         // keep the raw text
       }
-      if (!fs.existsSync(path.resolve(root, path.dirname(rel), target))) {
+      const resolved = path.resolve(root, path.dirname(rel), target);
+      const exists = fs.existsSync(resolved);
+      const real = exists ? realpath(resolved) : null;
+      if (!isInside(pluginRoot, resolved) || (real !== null && !isInside(pluginReal, real))) {
+        problems.push(`${rel}: link "${m[1]}" points outside ${PLUGIN_DIR}/ (an install has only ${PLUGIN_DIR}/)`);
+      } else if (!exists) {
         problems.push(`${rel}: link "${m[1]}" points to a missing file`);
       }
     }
@@ -562,7 +583,7 @@ export function check(root) {
   checkMarketplace(root, plugin.name, problems);
   checkMcp(root, problems);
   const skillNames = checkSkills(root, plugin.version, problems);
-  checkLinks(root, skillNames, problems);
+  checkLinks(root, problems);
   checkShared(root, skillNames, problems);
   checkForbiddenDirs(root, problems);
   checkPluginContents(root, problems);

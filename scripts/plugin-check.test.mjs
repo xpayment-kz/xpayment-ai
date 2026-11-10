@@ -344,6 +344,43 @@ test('relative link in references/*.md points to a missing file', (t) => {
   assertProblem(root, 'plugin/skills/ask/references/glossary.md', '../SKILL2.md', 'missing');
 });
 
+test('a link that leaves plugin/ is a problem line even when the target exists in the repository', (t) => {
+  const root = makeRepo(t);
+  editText(root, 'plugin/skills/ask/SKILL.md', (s) => s + '\nSee [the rules](../../../shared/glossary.md) and [the repo](../../../README.md).\n');
+  editText(root, 'plugin/README.md', (s) => s + '\nSee [the repository](../README.md).\n');
+  editText(root, 'plugin/skills/check/references/glossary.md', (s) => s + '\n[tools](../../../../scripts/tool.mjs)\n');
+  assertProblem(root, 'plugin/skills/ask/SKILL.md', '../../../shared/glossary.md', 'points outside plugin/');
+  assertProblem(root, 'plugin/skills/ask/SKILL.md', '../../../README.md', 'points outside plugin/');
+  assertProblem(root, 'plugin/README.md', '../README.md', 'points outside plugin/');
+  assertProblem(root, 'plugin/skills/check/references/glossary.md', 'scripts/tool.mjs', 'points outside plugin/');
+  assert.ok(!run(root).out.includes('points to a missing file'), 'reported as outside, not as missing');
+});
+
+test('a link through a symbolic link that leads out of plugin/ is outside too', (t) => {
+  const root = makeRepo(t);
+  fs.symlinkSync('../../../../shared', path.join(root, 'plugin/skills/ask/references/shared'));
+  editText(root, 'plugin/skills/ask/SKILL.md', (s) => s + '\n[g](references/shared/glossary.md)\n');
+  assertProblem(root, 'plugin/skills/ask/SKILL.md', 'references/shared/glossary.md', 'points outside plugin/');
+});
+
+test('links inside plugin/ are fine, from any .md under plugin/', (t) => {
+  const root = makeRepo(t);
+  editText(root, 'plugin/skills/ask/SKILL.md', (s) => s + '\n[l](../../LICENSE) [c](../check/SKILL.md) [r](../../README.md)\n');
+  editText(root, 'plugin/README.md', (s) => s + '\n[ask](skills/ask/SKILL.md)\n');
+  write(root, 'plugin/skills/ask/notes.md', '# Notes\n\n[skill](SKILL.md)\n');
+  assert.equal(run(root).out.trim(), 'plugin-check: ok');
+  // a .md outside references/ is checked as well
+  editText(root, 'plugin/skills/ask/notes.md', (s) => s + '[gone](missing.md)\n');
+  assertProblem(root, 'plugin/skills/ask/notes.md', 'missing.md', 'missing');
+});
+
+test('markdown files outside plugin/ are not link-checked', (t) => {
+  const root = makeRepo(t);
+  write(root, 'docs/notes.md', '[a](../../elsewhere.md) [b](missing.md)\n');
+  editText(root, 'README.md', (s) => s + '\n[c](plugin/skills/nope.md)\n');
+  assert.equal(run(root).out.trim(), 'plugin-check: ok');
+});
+
 test('links with a scheme, anchors only, and links in code fences are not checked', (t) => {
   const root = makeRepo(t);
   editText(
