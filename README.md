@@ -36,7 +36,7 @@ The plugin is `xpayment` in this repository. Short steps; every step with the ex
   ```
 
 - **ChatGPT on the web (tools only, no skills):** Plugins → Add → Add custom MCP server: name `xPayment`, server URL `https://api.xpayment.kz/mcp`, authentication OAuth; then sign in with «Войти через xPayment».
-- **ChatGPT desktop app:** upload the plugin archive (Plugins → Add → Upload plugin archive). chatgpt.com accepted the archive, but it runs only in the desktop app, and it was **not tested there**.
+- **ChatGPT desktop app:** upload the plugin archive [xpayment-0.1.0.zip](https://github.com/xpayment-kz/xpayment-ai/releases/download/v0.1.0/xpayment-0.1.0.zip) from the release (Plugins → Add → Upload plugin archive). The archive is the `plugin/` folder of this repository, with `.claude-plugin/plugin.json` at its top level. chatgpt.com accepted the archive, but it runs only in the desktop app, and it was **not tested there**.
 
 Checked on 2026-11-10; details, what you should see and what to expect on each platform are in [docs/platforms.md](docs/platforms.md).
 
@@ -71,7 +71,7 @@ How to call a skill:
 - **Claude Code:** `claude plugin marketplace update xpayment`, then `claude plugin update xpayment@xpayment`, then `/reload-plugins` or a new session. Claude Code keeps a cached copy until the plugin's version changes.
 - **Claude (claude.ai):** Customize → Plugins → + Add → Manage marketplaces → `xpayment-ai` → ⋯ → Check for updates. Automatic sync («Синхронизировать автоматически») needs the Claude GitHub app.
 - **Codex:** `codex plugin marketplace upgrade xpayment`, then a new session.
-- **ChatGPT:** upload the archive of the new release again; a custom MCP server needs no update.
+- **ChatGPT:** upload the archive of the new release again (the `xpayment-<version>.zip` asset of the [release](https://github.com/xpayment-kz/xpayment-ai/releases)); a custom MCP server needs no update.
 
 The plugin itself tells you when it is older than the documentation requires.
 
@@ -115,7 +115,7 @@ The skills are tested with `claude plugin eval` (Claude Code 2.1.319 or later). 
 
 ### Release archive
 
-The claude.ai plugin upload (in the Russian interface «Загрузить плагин») takes an archive with `.claude-plugin/plugin.json` at its top level. Build it from `plugin/` alone:
+The claude.ai plugin upload (in the Russian interface «Загрузить плагин») and the ChatGPT desktop app take an archive with `.claude-plugin/plugin.json` at its top level, which is the `plugin/` folder. Users do not need to build it: each release carries the ready archive (for 0.1.0, <https://github.com/xpayment-kz/xpayment-ai/releases/download/v0.1.0/xpayment-0.1.0.zip>). A maintainer builds it from `plugin/` alone:
 
 ```sh
 git archive --format=zip -o xpayment-<version>.zip HEAD:plugin

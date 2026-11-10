@@ -11,7 +11,7 @@
 - **Аутентификация платежей**: заголовок `Authorization: Bearer <ключ>` — ключ API v2 `xapi_…` (касса указывается в запросе по `device_name`) или ключ кассы `xdev_…` для API v1.
 - **Документация**: https://xpayment.kz/docs · OpenAPI: https://xpayment.kz/openapi/xpayment-api-v2.json и https://xpayment.kz/openapi/xpayment-api-v1.json
 - **Песочница**: тестовый режим без кассы Kaspi, без тарифа и без денег — тестовые ключи `xapi_test_…` (API v2) и `xdev_test_…` (API v1), тестовая касса `test`; те же адреса и ответы, что на бою. См. раздел «Песочница» ниже.
-- **AI-ассистенты**: Claude и ChatGPT подключаются к аккаунту через MCP `https://api.xpayment.kz/mcp` («Войти через xPayment»); документация для AI — MCP `https://api.xpayment.kz/mcp/docs` без входа и файл https://xpayment.kz/llms-full.txt. См. раздел «AI-ассистенты» ниже.
+- **AI-ассистенты**: Claude и ChatGPT подключаются к аккаунту через MCP `https://api.xpayment.kz/mcp` («Войти через xPayment»); документация для AI — MCP `https://api.xpayment.kz/mcp/docs` без входа и файл https://xpayment.kz/llms-full.txt. Плагин `xpayment` (Claude, Claude Code, Codex; в ChatGPT — только инструменты): https://xpayment.kz/ai. См. раздел «AI-ассистенты» ниже.
 - **Языки**: русский, қазақша, English.
 - **Тарификация**: без ежемесячной платы и платы за подключение; комиссия — процент только с **успешных** транзакций, ставка снижается с ростом оборота (прогрессивная шкала). Есть бесплатный тестовый период.
 - **Валюта**: KZT.
@@ -212,6 +212,11 @@ AI-ассистент (Claude, ChatGPT) может работать с ваши�
 - **MCP «аккаунт»**: `https://api.xpayment.kz/mcp` — вход «Войти через xPayment» (OAuth 2.1). Claude и ChatGPT подключаются по этому адресу.
 - **MCP «документация»**: `https://api.xpayment.kz/mcp/docs` — без входа: поиск по документации, разделы и справочник эндпоинта (те же тексты, что в `https://xpayment.kz/llms-full.txt`).
 - **Паспорт для AI**: `https://xpayment.kz/ai/manifest.json` — версии API (v1 — stable, v2 — beta), дата обновления документации, версия плагина, адреса MCP и список изменений.
+- **Плагин `xpayment`**: открытый плагин с навыками для Claude, Claude Code и Codex (в ChatGPT в браузере — только инструменты, без навыков) — репозиторий https://github.com/xpayment-kz/xpayment-ai, шаги подключения на странице https://xpayment.kz/ai.
+  - Четыре навыка: `ask` — вопросы по документации и аккаунту (ничего не меняет), `integrate` — от входа до первого боевого платежа, `migrate-v2` — перенос с API v1 на API v2 (beta), `check` — проверка интеграции.
+  - Claude Code: `claude plugin marketplace add xpayment-kz/xpayment-ai`, затем `claude plugin install xpayment@xpayment`.
+  - Codex: `codex plugin marketplace add xpayment-kz/xpayment-ai`, `codex plugin add xpayment@xpayment`, затем `codex mcp login xpayment`.
+  - Claude (claude.ai, приложение, Cowork) ставит плагин из маркетплейса `xpayment-kz/xpayment-ai`; ChatGPT в браузере подключает MCP `https://api.xpayment.kz/mcp` как пользовательский сервер (только инструменты, навыков нет).
 
 Права подключения. Приложение запрашивает их на странице согласия, человек нажимает «Разрешить» или «Отказать». Прав семь:
 
@@ -247,6 +252,7 @@ AI-ассистент (Claude, ChatGPT) может работать с ваши�
 - [OpenAPI API v2](https://xpayment.kz/openapi/xpayment-api-v2.json) и [OpenAPI API v1](https://xpayment.kz/openapi/xpayment-api-v1.json) — спецификации для импорта и генерации клиента.
 - [llms-full.txt](https://xpayment.kz/llms-full.txt) — llms.txt целиком и справочник всех эндпоинтов API v2 и API v1 (по-английски, как в OpenAPI).
 - [Паспорт для AI](https://xpayment.kz/ai/manifest.json) — версии API, дата обновления документации, версия плагина, адреса MCP-серверов, список изменений.
+- [Подключить к Claude и ChatGPT](https://xpayment.kz/ai) — плагин `xpayment`: установка в Claude, Claude Code, ChatGPT и Codex, безопасность, первое сообщение.
 - [Калькулятор тарифов](https://xpayment.kz/calculator) — расчёт комиссии по обороту.
 - [Сценарии использования](https://xpayment.kz/solutions) — интернет-магазин, Telegram-бот, CRM, доставка, платформы.
 - [Сравнение](https://xpayment.kz/comparison) — xpayment vs банковский эквайринг и подписочные сервисы.
@@ -269,7 +275,7 @@ AI-ассистент (Claude, ChatGPT) может работать с ваши�
 
 ## Индексация и цитирование
 
-- Открыты для поисковых и AI-краулеров: `/`, `/kaspi-pay-api`, `/blog`, `/blog/*`, `/docs`, `/solutions`, `/comparison`, `/calculator`, `/robots.txt`, `/sitemap.xml`, `/llms.txt`, `/llms-full.txt`, `/ai/manifest.json`.
+- Открыты для поисковых и AI-краулеров: `/`, `/kaspi-pay-api`, `/blog`, `/blog/*`, `/docs`, `/solutions`, `/comparison`, `/calculator`, `/ai`, `/robots.txt`, `/sitemap.xml`, `/llms.txt`, `/llms-full.txt`, `/ai/manifest.json`.
 - Исключены из индексации: `/app`, `/login`, `/auth/*`, `/legal/*` (юридические документы пересматриваются — не цитируйте кэшированные копии; актуальная редакция всегда на сайте).
 - Канонический домен: `https://xpayment.kz`. Sitemap: `https://xpayment.kz/sitemap.xml`.
 - Альтернативные форматы: HTML (`/docs`), OpenAPI (`/openapi/xpayment-api-v2.json`, `/openapi/xpayment-api-v1.json`), Markdown (см. ниже).

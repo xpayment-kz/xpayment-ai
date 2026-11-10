@@ -4,7 +4,7 @@
     "v2": "beta",
     "v1": "stable"
   },
-  "docs_updated_at": "2026-11-09",
+  "docs_updated_at": "2026-11-10",
   "plugin": {
     "min_version": "0.1.0",
     "latest_version": "0.1.0"
@@ -21,6 +21,10 @@
     "docs": "https://api.xpayment.kz/mcp/docs"
   },
   "changes": [
+    {
+      "date": "2026-11-10",
+      "text": "Плагин xpayment для Claude и ChatGPT: https://xpayment.kz/ai"
+    },
     {
       "date": "2026-11-09",
       "text": "MCP-серверы «аккаунт» и «документация», вход через xPayment для AI-ассистентов"
