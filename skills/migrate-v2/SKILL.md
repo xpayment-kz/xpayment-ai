@@ -55,6 +55,7 @@ Then read `references/safe-search.md` too, before you look at the project at all
 ### 4. The code, behind the flag — `v1-to-v2.md` §4–5
 
 - Code mode: write the flag `XPAYMENT_API_VERSION` (`v1` when unset), the v2 settings (`XPAYMENT_API_KEY`, `XPAYMENT_DEVICE_NAME`), the path prefix, key and `device_name` in one client, and tests for both modes. With the flag unset the shop behaves exactly as before. Update `.env.example` and the README. Keep the entry point and the start command.
+- **The 404 rule** (`v1-to-v2.md` §4): the handler answers 2xx on a 404 only for a payment that no order of the shop has. For an order made before the switch (no stored version, or `v1`), a 404 from `/v2` is never «not ours»: the handler reads the payment again through `/v1` with the v1 key and maps that status; if that read is not `200` either, it answers 500 and does not mark the delivery processed. After a rollback, the same the other way round.
 - Run the project's tests; show what you changed. Do not touch the webhook secret, the signature check or the status mapping.
 - Tell the person: deploying this changes nothing for customers; ask them to deploy it when they are ready (one question).
 
@@ -62,7 +63,7 @@ Then read `references/safe-search.md` too, before you look at the project at all
 
 - Write `XPAYMENT_API_VERSION=v2`, `XPAYMENT_API_KEY` (the test key) and `XPAYMENT_DEVICE_NAME=test` into `.env` by the silent command; confirm with `set`/`missing`.
 - Run: the tests with the flag on both values; the key check (`GET /v2/devices`, prints only the outcome); an order through the project; `simulate_test_payment`; the signed event; the order becomes paid; a refund if the shop has one.
-- **Reads across versions, both directions** (script A, `v1-to-v2.md` §8; it prints only statuses): a payment made through `/v1` read through `/v2`, and one made through `/v2` read through `/v1`. The documentation says neither, and a failed read on live means a webhook answered 500 and a paid order left unpaid. Both must be `200`. Then remove `XPAYMENT_TEST_DEVICE_KEY` from `.env`.
+- **Reads across versions, both directions** (script A, `v1-to-v2.md` §8; it prints only statuses): a payment made through `/v1` read through `/v2`, and one made through `/v2` read through `/v1`. The documentation says neither, and a failed read on live means a paid order left unpaid (the event lost if a 404 is answered 2xx, or retried until `EXHAUSTED` if it gets 500). Both must be `200`. Then remove `XPAYMENT_TEST_DEVICE_KEY` from `.env`.
 - A direction fails: say which, and change the plan before going on («When a read across versions fails» in the reference): the order remembers the version it was made with and the handler reads it with that version's key; both keys stay on the server until the orders opened before the switch are final.
 - Report it as a short table. Then set the local flag back to `v1`. Something else fails: fix the code and run again. Never test on live instead.
 
@@ -71,7 +72,7 @@ Then read `references/safe-search.md` too, before you look at the project at all
 - Only after the sandbox run passed and the person says they want to switch. Issue the live key: `create_api_key` (`live`, `version: "v2"`) gives a `reveal_url`. They open it signed in, within the hour, and save the value as `XPAYMENT_API_KEY` on the server, with `XPAYMENT_DEVICE_NAME` (the live `device_name`). Never ask for the value, and no part of it in your reply.
 - Three moves, each one they confirm: (1) set the two settings on the server with the flag still unset (v1) and restart; (2) **the gate**: they run script B (`v1-to-v2.md` §8) on the server, flag still `v1`, and give you its output (it holds no value): `set`/`missing` for `XPAYMENT_API_KEY` and `XPAYMENT_DEVICE_NAME`, the status of `GET /v2/devices`, and whether the name is listed and without a session problem; (3) only on `200` and `listed`, set `XPAYMENT_API_VERSION=v2` and restart. Anything else (missing, `401`, not listed, a session problem): stop, name the cause, fix it; the shop is still on v1. The rollback is one step: set the flag back to `v1` and restart; nothing has been revoked yet.
 - Checks that leave no trace, after the flip: the gate again, `list_api_keys` (the new key shows `last_used_at`), `list_devices`, `test_webhook`. Never create or cancel a live payment through the tools; the shop's own orders are the test.
-- Ask the person to watch an order opened before the switch end `paid` and new orders pay. Keep the `xdev_` keys until they say v2 has run long enough.
+- Ask the person to watch an order opened before the switch end `paid` and new orders pay. Keep the `xdev_` keys until they say v2 has run long enough and no order opened before the switch is still open: the handler reads those through `/v1` on a 404.
 
 ### 7. Revoke the `xdev_` keys, last — `v1-to-v2.md` §7
 
