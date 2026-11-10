@@ -17,8 +17,9 @@ Do these four steps once, at the start of the conversation, in this order.
    | Platform | How to update the plugin |
    |---|---|
    | Claude Code | In the shell: `claude plugin marketplace update xpayment`, then `claude plugin update xpayment@xpayment`. Or in a session: `/plugin` → Marketplaces → xpayment → Update marketplace. Then `/reload-plugins` or a new session. |
-   | Claude (claude.ai, desktop app, Cowork) | Customize → Plugins → xpayment: a marketplace added on claude.ai updates its plugins automatically; check that the version there is the new one. |
+   | Claude (claude.ai, desktop app, Cowork) | Customize → Plugins → + Add → Manage marketplaces → xpayment-ai → ⋯ → Check for updates (in Russian: Персонализация → Плагины → + Добавить → Управлять маркетплейсами → xpayment-ai → ⋯ → Проверить обновления). It updates by itself only if the person turned on «Sync automatically» there, which needs the Claude GitHub app. |
    | Codex | `codex plugin marketplace upgrade xpayment`, then a new session. |
+   | ChatGPT | The plugin archive of the new release: Plugins → Add → Upload plugin archive (in Russian: Плагины → Добавить → Загрузить архив плагина). A connector added as a custom MCP server needs no update. |
 
 3. **Documentation.** Read the sections the task needs: `search_docs`, then `get_doc_section` with a title it found (or one from `list_doc_sections`); for one endpoint, `describe_endpoint` with `version`, `method` and `path`. Without the docs server: `https://xpayment.kz/llms-full.txt` with your web tool; without that: `references/docs/llms-full.txt` (large: search it with Grep or read the parts you need). Never answer from memory what the documentation can tell you.
 4. **Account.** Find out whether the «xpayment» server is connected and signed in: call `whoami`. If its tools are missing, or it says you are not signed in, follow «Account». For a question the documentation alone answers, don't push the sign-in: answer, and at most mention once that signing in lets you also look at their account.
@@ -46,10 +47,11 @@ If the «xpayment» tools are not available, or say the person is not signed in:
 
 | Platform | How to connect the account |
 |---|---|
-| Claude Code | Run `/mcp`, choose `plugin:xpayment:xpayment`, Authenticate; the browser opens «Войти через xPayment». |
-| Claude (claude.ai, desktop app, Cowork) | Customize → Plugins → xpayment → Connectors: connect «xpayment». |
+| Claude Code | `/mcp` → `plugin:xpayment:xpayment` → Authenticate, or in a terminal `claude mcp login plugin:xpayment:xpayment`; the browser opens «Войти через xPayment». |
+| Claude (claude.ai, desktop app, Cowork) | Customize → Plugins → xPayment → Connectors → Connect «xpayment» (in Russian: Персонализация → Плагины → xPayment → Коннекторы → Подключить), then sign in with «Войти через xPayment» and allow access. |
 | Codex | `codex mcp login xpayment` |
-| ChatGPT | Connect the xPayment connector and sign in with «Войти через xPayment». |
+| ChatGPT (web) | Plugins → Add → Add custom MCP server (in Russian: Плагины → Добавить → Добавить пользовательский сервер MCP): name `xPayment`, server URL `https://api.xpayment.kz/mcp`, authentication OAuth; then sign in with «Войти через xPayment». In a chat, call it with `@xPayment`. |
+| ChatGPT (desktop app) | Upload the plugin archive of the release: Plugins → Add → Upload plugin archive; then connect «xpayment» and sign in. |
 
 - A tool that answers `SCOPE_REQUIRED` names the missing right (e.g. `keys:write`): tell the person to connect again and allow that right on the consent page.
 - Cashboxes of other members are not yours to manage: each member connects their own AI, or the owner does it in the cabinet.
