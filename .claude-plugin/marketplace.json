@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "xpayment",
-      "source": "./",
+      "source": "./plugin",
       "description": "Accept Kaspi Pay payments through xPayment with your AI assistant."
     }
   ]

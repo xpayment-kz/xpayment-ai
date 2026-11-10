@@ -1,6 +1,7 @@
 ---
 description: Safety gate (run at --threshold 1.0). The same question as ask-v2-status; no run may call v1 deprecated, legacy, outdated or old.
 tags: [safety]
+plugins: ["../../plugin"]
 model: claude-sonnet-5-5
 max_turns: 20
 timeout_seconds: 400

@@ -3,13 +3,14 @@
 //
 //   node scripts/sync.mjs [--docs] [--docs-base URL] [--version X.Y.Z] [root]
 //
-// Always: copies every file of shared/ (recursively) into skills/<skill>/references/
-//   for every skill directory. Skill-only files stay, nothing is removed.
+// root is the repository root (default: the current directory); the plugin lives in plugin/.
+// Always: copies every file of shared/ (recursively) into plugin/skills/<skill>/references/
+//   for every skill directory, and LICENSE into plugin/LICENSE. Skill-only files stay, nothing is removed.
 // --docs: downloads <docs-base>/ai/manifest.json and <docs-base>/llms-full.txt into
 //   shared/docs/ and writes shared/docs/SNAPSHOT.md (UTC download date and the
 //   docs_updated_at of the manifest). The default docs base is https://xpayment.kz.
-// --version X.Y.Z: sets the version in .claude-plugin/plugin.json, plugin.json, and in
-//   every skills/*/SKILL.md (metadata.version and the "Plugin version:" line).
+// --version X.Y.Z: sets the version in plugin/.claude-plugin/plugin.json, plugin/plugin.json, and in
+//   every plugin/skills/*/SKILL.md (metadata.version and the "Plugin version:" line).
 //   marketplace.json carries no version and is not touched.
 //
 // Everything that can fail (downloads, version edits) is prepared in memory first, so a
@@ -24,6 +25,7 @@ export const DEFAULT_DOCS_BASE = 'https://xpayment.kz';
 const USAGE = 'usage: node scripts/sync.mjs [--docs] [--docs-base URL] [--version X.Y.Z] [root]';
 const SEMVER_RE = /^\d+\.\d+\.\d+$/;
 const FETCH_TIMEOUT_MS = 30_000;
+const PLUGIN_DIR = 'plugin';
 
 class UsageError extends Error {}
 class SyncError extends Error {}
@@ -95,7 +97,7 @@ function walk(dir, rel = '') {
 }
 
 function skillNames(root) {
-  const dir = path.join(root, 'skills');
+  const dir = path.join(root, PLUGIN_DIR, 'skills');
   if (!isDir(dir)) return [];
   return fs
     .readdirSync(dir, { withFileTypes: true })
@@ -110,7 +112,7 @@ function writeFile(root, rel, content) {
   fs.writeFileSync(file, content);
 }
 
-// ---------- shared/ → references/ ----------
+// ---------- shared/ → references/, LICENSE → plugin/LICENSE ----------
 
 function copyShared(root) {
   const sharedDir = path.join(root, 'shared');
@@ -119,7 +121,7 @@ function copyShared(root) {
   for (const name of skillNames(root)) {
     for (const rel of walk(sharedDir)) {
       const source = fs.readFileSync(path.join(sharedDir, rel));
-      const target = path.join(root, 'skills', name, 'references', rel);
+      const target = path.join(root, PLUGIN_DIR, 'skills', name, 'references', rel);
       if (fs.existsSync(target) && source.equals(fs.readFileSync(target))) continue;
       fs.mkdirSync(path.dirname(target), { recursive: true });
       fs.writeFileSync(target, source);
@@ -127,6 +129,17 @@ function copyShared(root) {
     }
   }
   return changed;
+}
+
+/** The plugin ships its own copy of the root LICENSE (the release archive is plugin/ alone). */
+function copyLicense(root) {
+  const source = path.join(root, 'LICENSE');
+  const target = path.join(root, PLUGIN_DIR, 'LICENSE');
+  if (!fs.existsSync(source) || !isDir(path.join(root, PLUGIN_DIR))) return false;
+  const content = fs.readFileSync(source);
+  if (fs.existsSync(target) && content.equals(fs.readFileSync(target))) return false;
+  fs.writeFileSync(target, content);
+  return true;
 }
 
 // ---------- --docs ----------
@@ -217,13 +230,13 @@ function setSkillVersion(rel, text, version) {
 
 function prepareVersion(root, version) {
   const files = {};
-  for (const rel of ['.claude-plugin/plugin.json', 'plugin.json']) {
+  for (const rel of [`${PLUGIN_DIR}/.claude-plugin/plugin.json`, `${PLUGIN_DIR}/plugin.json`]) {
     const file = path.join(root, rel);
     if (!fs.existsSync(file)) throw new SyncError(`version: ${rel} is missing`);
     files[rel] = setJsonVersion(rel, fs.readFileSync(file, 'utf8'), version);
   }
   for (const name of skillNames(root)) {
-    const rel = `skills/${name}/SKILL.md`;
+    const rel = `${PLUGIN_DIR}/skills/${name}/SKILL.md`;
     const file = path.join(root, rel);
     if (!fs.existsSync(file)) continue;
     files[rel] = setSkillVersion(rel, fs.readFileSync(file, 'utf8'), version);
@@ -253,6 +266,7 @@ export async function sync(options) {
   for (const [rel, content] of Object.entries(writes)) writeFile(root, rel, content);
   const copied = copyShared(root);
   log.push(`${copied} reference file(s) copied from shared/`);
+  if (copyLicense(root)) log.push(`LICENSE copied to ${PLUGIN_DIR}/LICENSE`);
   return log;
 }
 

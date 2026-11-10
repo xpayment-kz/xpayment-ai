@@ -44,7 +44,8 @@ jobs:
         run: php tests/run.php
       - name: Plugin check
         run: node scripts/plugin-check.mjs
-      - name: Validate the plugin with Claude Code
+      - name: Validate the marketplace and the plugin with Claude Code
         run: |
           npm i -g @anthropic-ai/claude-code@2.1.319
           claude plugin validate . --strict
+          claude plugin validate plugin --strict
