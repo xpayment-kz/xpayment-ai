@@ -1,0 +1,20 @@
+{
+  "items": [
+    {
+      "id": "6c1f2e3d-4b5a-4c6d-9e8f-7a6b5c4d3e21",
+      "name": "Магазин на Абая",
+      "device_name": "shop1",
+      "is_active": true,
+      "session_problem_since": "2026-11-09T09:20:00Z",
+      "phone_masked": "+7 701 ••• •• 45"
+    },
+    {
+      "id": "8d2e3f4a-5b6c-4d7e-8f9a-0b1c2d3e4f56",
+      "name": "Склад",
+      "device_name": "shop2",
+      "is_active": true,
+      "session_problem_since": null,
+      "phone_masked": "+7 702 ••• •• 18"
+    }
+  ]
+}

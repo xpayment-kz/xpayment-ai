@@ -1,0 +1,1028 @@
+{
+  "tools": [
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Archive a payment page"
+      },
+      "description": "Archives a published payment page: its public_url stops taking payments, and this server cannot publish it again. A draft cannot be archived (PROJECT_IS_DRAFT). Ask the person in this conversation first and call with confirmed: true only after an explicit yes; without it the tool refuses and says what it would do. Answers the page in the fields of get_payment_page.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmed": {
+            "description": "true only after the person said yes to archiving this page in this conversation",
+            "type": "boolean"
+          },
+          "page_id": {
+            "description": "required: the payment page, as list_payment_pages shows it",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "archive_payment_page"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false,
+        "title": "Confirm a new cashbox"
+      },
+      "description": "Finishes adding a cashbox: passes the code of the SMS to Kaspi for the challenge_id start_add_device answered. Ask the person for the code the cashier received; it goes to Kaspi only and is never stored or shown. Answers the new cashbox in the fields of list_devices (id, name, device_name, is_active; session_problem_since and phone_masked are null here, list_devices reads them). No API key is made: create one with create_api_key. A paid cashbox needs confirmed: true here too, as in start_add_device. environment is required and must be \"live\".",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "challenge_id": {
+            "description": "required: challenge_id of the start_add_device answer",
+            "type": "string"
+          },
+          "code": {
+            "description": "required: the code of the SMS Kaspi sent to the cashier's phone; it goes to Kaspi and nowhere else",
+            "type": "string"
+          },
+          "confirmed": {
+            "description": "true only after the person agreed to the price start_add_device named; leave it out otherwise",
+            "type": "boolean"
+          },
+          "environment": {
+            "description": "required: \"live\" (cashboxes are managed on live only; the sandbox has its one test cashbox); there is no default",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "confirm_add_device"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Create an API key"
+      },
+      "description": "Creates an API key. version \"v2\": a key of the whole account for the v2 payments API (xapi_…; at most 10 active); \"v1\": a key of one cashbox for the v1 API (xdev_…), device_id names the cashbox. name is 1 to 100 characters. In the sandbox the test key is made at once and answered: key_id, key (shown this once) and key_prefix. On live the key never passes through this conversation: the answer is reveal_url, a one-time page where the person, signed in to the cabinet, sees the key (it is made when they open it), expires_at (an hour) and a note; give them the link and never ask them to paste the key here. environment is required: \"sandbox\" or \"live\".",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "device_id": {
+            "description": "v1 on live: required, the cashbox the key is for, as list_devices shows it. In the sandbox a v1 key is the test cashbox's and device_id may be left out. Not for v2",
+            "type": "string"
+          },
+          "environment": {
+            "description": "required: \"sandbox\" (a test key, returned at once) or \"live\" (a link the person opens to see the key); there is no default",
+            "type": "string"
+          },
+          "name": {
+            "description": "required: the key's name, 1 to 100 characters, e.g. the system that will use it",
+            "type": "string"
+          },
+          "version": {
+            "description": "required: \"v2\" — a key of the whole account for the v2 API (xapi_…), or \"v1\" — a key of one cashbox for the v1 API (xdev_…)",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "create_api_key"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Create a payment page"
+      },
+      "description": "Creates a payment page — the cabinet's «Платёжные ссылки» (/v1/projects), a reusable page where a client fills a form and pays; not a one-time payment link of the payments API — as a draft: it takes no payments and has no public_url until publish_payment_page. Arguments: name, description, device_id (the live cashbox that issues the payments), amount_mode \"fixed\" with fixed_amount, or \"tariff\" with a select field whose options carry the prices, and fields (the form: key, label, type phone|text|email|select, required, options of label, value, price). Answers the page in the fields of get_payment_page. Live only; it takes no environment.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "amount_mode": {
+            "description": "required: \"fixed\" (one price, fixed_amount) or \"tariff\" (the price of the option the client picks in a select field)",
+            "type": "string"
+          },
+          "description": {
+            "description": "what the client pays for",
+            "type": "string"
+          },
+          "device_id": {
+            "description": "required: the live cashbox that issues the page's payments, as list_devices shows it",
+            "type": "string"
+          },
+          "fields": {
+            "description": "the form the client fills; a phone field is added when the page is published",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "key": {
+                  "description": "required: the field's stable key, e.g. name, email, tariff; unique in the form",
+                  "type": "string"
+                },
+                "label": {
+                  "description": "required: what the client sees",
+                  "type": "string"
+                },
+                "options": {
+                  "description": "select only: the choices",
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "label": {
+                        "description": "required: what the client sees",
+                        "type": "string"
+                      },
+                      "price": {
+                        "description": "the price in KZT when amount_mode is tariff (more than 0 there)",
+                        "type": "number"
+                      },
+                      "value": {
+                        "description": "required: what is stored with the payment",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": [
+                    "null",
+                    "array"
+                  ]
+                },
+                "required": {
+                  "description": "whether the client must fill it",
+                  "type": "boolean"
+                },
+                "type": {
+                  "description": "required: phone, text, email or select",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "fixed_amount": {
+            "description": "the price in KZT for amount_mode fixed (more than 0 to publish)",
+            "type": "number"
+          },
+          "name": {
+            "description": "required: the page's name, as the client sees it",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "create_payment_page"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Create a test payment"
+      },
+      "description": "Creates a test payment in the sandbox, through the person's test cashbox: kind \"invoice\" — a test invoice to payer_phone (status PENDING, then WAITING_FOR_PAYER a few seconds later), or \"link\" — a test payment link (QR_TOKEN_CREATED, lives 5 minutes). No money moves and Kaspi is not reached; end it with simulate_test_payment. Answers the payment in the fields of list_payments — id, status, amount, qr_token (for a link, the page a payer opens; null for an invoice), … — and, for a link, expire_date. Live payments are never created through this server. The sandbox's test payments, outcomes and test refunds through these tools are limited per person (60 a minute, 1000 a day): over it RATE_LIMITED with retry_after in seconds. environment is required and must be \"sandbox\".",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "description": "required: the amount in KZT, more than 0",
+            "type": "number"
+          },
+          "comment": {
+            "description": "invoice only: the comment the payer sees",
+            "type": "string"
+          },
+          "environment": {
+            "description": "required: \"sandbox\" — test payments exist in the sandbox only; this server never creates a live payment",
+            "type": "string"
+          },
+          "idempotency_key": {
+            "description": "invoice only, as the X-Idempotency-Key header: a repeat with the same key answers the test invoice it made",
+            "type": "string"
+          },
+          "kind": {
+            "description": "required: \"invoice\" — a test invoice to a payer's phone, or \"link\" — a test payment link, a page a payer opens",
+            "type": "string"
+          },
+          "merchant_order_id": {
+            "description": "your order id; the webhooks carry it",
+            "type": "string"
+          },
+          "payer_phone": {
+            "description": "invoice only, and required there: the payer's phone. Ending in 7000000001 it fails as KASPI_CLIENT_NOT_FOUND, in 7000000002 as KASPI_ERROR, as Kaspi would",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "create_test_payment"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Create a webhook"
+      },
+      "description": "Creates a webhook subscription: xPayment POSTs the chosen events to url, signed with the subscription's secret (X-xPayment-Signature: the hex HMAC-SHA256 of the body). events left out = every event. In the sandbox the subscription is the person's own test one and the answer is subscription (the fields of list_webhooks) and secret, shown this once. On live the subscription is the organization's and its secret never passes through this conversation: the answer is subscription, reveal_url — a one-time page where the person, signed in to the cabinet, sees the secret (it is made when they open it, and deliveries are signed with it from then on) — and expires_at (an hour). Give them the link and never ask them to paste the secret here. environment is required: \"sandbox\" or \"live\".",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "description": "a note for the person, e.g. the system that receives the events",
+            "type": "string"
+          },
+          "environment": {
+            "description": "required: \"sandbox\" (a test subscription of the person's own; its secret is answered at once) or \"live\" (the organization's; its secret is a one-time link); there is no default",
+            "type": "string"
+          },
+          "events": {
+            "description": "the events to deliver: payment.completed, payment.expired, payment.cancelled, payment.failed, payment.refunded, payment.refund_failed, booking.confirmed, booking.expired, booking.cancelled, booking.rescheduled, or \"*\" for all; left out = all",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "url": {
+            "description": "required: the absolute http:// or https:// address that receives the events",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "create_webhook"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Delete a webhook"
+      },
+      "description": "Deletes a webhook subscription: its pending deliveries are cancelled and no event goes to its url any more; this server cannot undo it. Ask the person in this conversation first and call with confirmed: true only after an explicit yes; without it the tool refuses and says what it would do. Answers subscription_id and deleted. environment is required: \"sandbox\" or \"live\".",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmed": {
+            "description": "true only after the person said yes to deleting this subscription in this conversation",
+            "type": "boolean"
+          },
+          "environment": {
+            "description": "required: \"sandbox\" or \"live\", where the subscription is; there is no default",
+            "type": "string"
+          },
+          "subscription_id": {
+            "description": "required: the subscription, as list_webhooks shows it",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "delete_webhook"
+    },
+    {
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "Account"
+      },
+      "description": "Shows the account this connection works in: the organization (id, name), the signed-in person's role (owner or member), the billing (status, plan_name, balance and overdraft_limit in KZT, trial_expires_at, daily_tx_limit, monthly_payment_limit, device_limit — cashboxes included in the plan, null = unlimited — active_devices, device_capacity, extra_device_price — the price of one more cashbox; billing is null while the organization has no plan), topup_url — the cabinet page where the person tops up the balance — and sandbox_available. Read-only.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "name": "get_account"
+    },
+    {
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "Payment"
+      },
+      "description": "Shows one of the person's payments (the fields of list_payments) with its refunds: id, status, amount, reason, created_at, completed_at. environment is required: \"sandbox\" or \"live\". Read-only.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "environment": {
+            "description": "required: \"sandbox\" (test mode, no real money) or \"live\"; there is no default",
+            "type": "string"
+          },
+          "payment_id": {
+            "description": "required: the payment, as list_payments shows it",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "get_payment"
+    },
+    {
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "Payment page"
+      },
+      "description": "Shows one payment page (the fields of list_payment_pages). Payment pages are the cabinet's «Платёжные ссылки» (/v1/projects), not the payments API's one-time links (POST /payments/link). Read-only.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "page_id": {
+            "description": "required: the payment page, as list_payment_pages shows it",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "get_payment_page"
+    },
+    {
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "API keys"
+      },
+      "description": "Lists the person's active API keys in the environment: v2 keys (version \"v2\", xapi_…, for the whole account) and the v1 keys of each cashbox (version \"v1\", xdev_…): id, version, name, key_prefix (the first characters, to recognize a key), device_id and device_name (v1 only; null for v2), created_at, last_used_at (v2 only). A key's value is shown once, when it is created, and never by this tool. environment is required: \"sandbox\" or \"live\". Read-only.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "environment": {
+            "description": "required: \"sandbox\" (test mode, no real money) or \"live\"; there is no default",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "list_api_keys"
+    },
+    {
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "Cashboxes"
+      },
+      "description": "Lists the person's cashboxes (Kaspi Pay cashiers) in the environment: id, name, device_name (the name the v2 API addresses a cashbox by; null when not set), is_active, session_problem_since (since when Kaspi refuses the cashbox's session; null while it works) and phone_masked (the cashier's Kaspi phone, masked). The sandbox has exactly one test cashbox, device_name \"test\". A member sees only their own cashboxes. environment is required: \"sandbox\" or \"live\". Read-only.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "environment": {
+            "description": "required: \"sandbox\" (test mode, no real money) or \"live\"; there is no default",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "list_devices"
+    },
+    {
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "Payment pages"
+      },
+      "description": "Lists the person's payment pages: the cabinet's «Платёжные ссылки» (/v1/projects) — reusable pages where a client fills a form and pays. They are not the one-time payment links of the payments API (POST /payments/link). For each: id, name, status (draft, active, archived), slug, public_url (the page's address; null unless active), amount_mode (fixed or tariff), fixed_amount, device_id (the cashbox that issues the payments; null for a draft without one), fields (the form), created_at; with has_more. Optional filter: status. Payment pages exist on live only. Read-only.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "description": "only pages in this status: draft, active or archived",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "list_payment_pages"
+    },
+    {
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "Payments"
+      },
+      "description": "Lists the person's payments in the environment, newest first: id, status (PENDING, WAITING_FOR_PAYER, QR_TOKEN_CREATED, COMPLETED, CANCELLED, EXPIRED, FAILED, PARTIALLY_REFUNDED, REFUNDED), amount in KZT, payer_phone, merchant_order_id, device_name of the cashbox, qr_token (the page of a sandbox test link; null for an invoice and for a live link), created_at, completed_at, expires_at, environment; with has_more. Filters: status, merchant_order_id, payer_phone, device_name. limit is 1 to 50 (20 when left out); for the next page pass next_cursor_created_at and next_cursor_id of the answer as cursor_created_at and cursor_id. environment is required: \"sandbox\" or \"live\". Read-only.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "cursor_created_at": {
+            "description": "next page: next_cursor_created_at of the previous answer, with cursor_id",
+            "type": "string"
+          },
+          "cursor_id": {
+            "description": "next page: next_cursor_id of the previous answer, with cursor_created_at",
+            "type": "string"
+          },
+          "device_name": {
+            "description": "only payments through the cashbox with this device_name (case-insensitive)",
+            "type": "string"
+          },
+          "environment": {
+            "description": "required: \"sandbox\" (test mode, no real money) or \"live\"; there is no default",
+            "type": "string"
+          },
+          "limit": {
+            "description": "how many payments, 1 to 50; 20 when left out",
+            "type": "integer"
+          },
+          "merchant_order_id": {
+            "description": "only payments with this merchant order id",
+            "type": "string"
+          },
+          "payer_phone": {
+            "description": "only payments to this payer phone",
+            "type": "string"
+          },
+          "status": {
+            "description": "only payments in this status, uppercase as returned (COMPLETED, PENDING, …)",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "list_payments"
+    },
+    {
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "Webhook deliveries"
+      },
+      "description": "Lists the deliveries of one webhook subscription, newest first: id, subscription_id, payment_id, event, status (PENDING, SUCCESS, FAILED, EXHAUSTED), attempt_number, response_code, delivered_at, created_at; with has_more. limit is 1 to 50 (20 when left out); for the next page pass next_cursor_created_at and next_cursor_id of the answer as cursor_created_at and cursor_id. environment is required: \"sandbox\" or \"live\". Read-only.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "cursor_created_at": {
+            "description": "next page: next_cursor_created_at of the previous answer, with cursor_id",
+            "type": "string"
+          },
+          "cursor_id": {
+            "description": "next page: next_cursor_id of the previous answer, with cursor_created_at",
+            "type": "string"
+          },
+          "environment": {
+            "description": "required: \"sandbox\" (test mode, no real money) or \"live\"; there is no default",
+            "type": "string"
+          },
+          "limit": {
+            "description": "how many deliveries, 1 to 50; 20 when left out",
+            "type": "integer"
+          },
+          "subscription_id": {
+            "description": "required: the webhook subscription, as list_webhooks shows it",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "list_webhook_deliveries"
+    },
+    {
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "Webhooks"
+      },
+      "description": "Lists the webhook subscriptions of the environment: on live the organization's, in the sandbox the person's own test ones. For each: id, url, events, is_active, description, has_secret (whether deliveries are signed; the secret itself is never shown), last_success_at, last_failure_at, failure_count (failed attempts since the last success) and failing_since (set while deliveries keep failing). environment is required: \"sandbox\" or \"live\". Read-only.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "environment": {
+            "description": "required: \"sandbox\" (test mode, no real money) or \"live\"; there is no default",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "list_webhooks"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Publish a payment page"
+      },
+      "description": "Publishes a draft payment page after a full check (a valid amount and form, an active cashbox of the organization): from then on public_url takes payments; a phone field is added to the form if it has none. Answers the page in the fields of get_payment_page.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "page_id": {
+            "description": "required: the payment page, as list_payment_pages shows it",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "publish_payment_page"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false,
+        "title": "Refund a payment"
+      },
+      "description": "Refunds a paid payment (COMPLETED or PARTIALLY_REFUNDED), in full or in part. On live this returns REAL MONEY to the payer through Kaspi and cannot be undone: tell the person the payment and the amount, ask them in this conversation and call with confirmed: true only after an explicit yes; without it the tool refuses and says what it would do. The same refund (the same payment and amount) again within ten minutes is refused as DUPLICATE_ACTION — after a lost answer, check get_payment instead of calling again. In the sandbox it is a test refund, needs no confirmed, and is limited with the other test traffic (RATE_LIMITED, retry_after); a test refund of exactly 13.13 is declined. The refund completes within seconds to minutes; get_payment shows it. Answers the refund: id, status (PENDING at first), amount, reason, created_at, completed_at. environment is required: \"sandbox\" or \"live\".",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "description": "required: the amount to return in KZT: more than 0, at most what is left of the payment",
+            "type": "number"
+          },
+          "confirmed": {
+            "description": "live: true only after the person said yes to this refund — this payment and this amount — in this conversation; not needed in the sandbox",
+            "type": "boolean"
+          },
+          "environment": {
+            "description": "required: \"sandbox\" (a test refund, no money moves) or \"live\" (real money goes back to the payer); there is no default",
+            "type": "string"
+          },
+          "payment_id": {
+            "description": "required: the payment, COMPLETED or PARTIALLY_REFUNDED, as list_payments shows it",
+            "type": "string"
+          },
+          "reason": {
+            "description": "why the money goes back; the refund keeps it",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "refund_payment"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Remove a cashbox"
+      },
+      "description": "Removes a cashbox: it stops taking payments, all its v1 API keys (xdev_…) are revoked with it, and payment pages and booking cards that use it can no longer take payments. This server cannot undo it. Ask the person in this conversation first and call with confirmed: true only after an explicit yes; without it the tool refuses and says what it would do. Answers device_id and removed. environment is required and must be \"live\".",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmed": {
+            "description": "true only after the person said yes to removing this cashbox in this conversation",
+            "type": "boolean"
+          },
+          "device_id": {
+            "description": "required: the cashbox, as list_devices shows it",
+            "type": "string"
+          },
+          "environment": {
+            "description": "required: \"live\" (cashboxes are managed on live only; the sandbox has its one test cashbox); there is no default",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "remove_device"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Revoke an API key"
+      },
+      "description": "Revokes an API key at once: every request made with it is refused from then on, so an integration that uses it stops working. version and key_id are as list_api_keys shows them. Ask the person in this conversation first and call with confirmed: true only after an explicit yes; without it the tool refuses and says what it would do. Answers key_id and revoked. environment is required: \"sandbox\" or \"live\".",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmed": {
+            "description": "true only after the person said yes to revoking this key in this conversation",
+            "type": "boolean"
+          },
+          "environment": {
+            "description": "required: \"sandbox\" or \"live\", where the key is; there is no default",
+            "type": "string"
+          },
+          "key_id": {
+            "description": "required: the key's id, as list_api_keys shows it",
+            "type": "string"
+          },
+          "version": {
+            "description": "required: the key's version as list_api_keys shows it: \"v2\" or \"v1\"",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "revoke_api_key"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Rotate a webhook secret"
+      },
+      "description": "Replaces the signing secret of a webhook subscription; the receiving system must then verify with the new one. In the sandbox the new secret is made at once and answered as secret; the old one stops working now. On live the answer is reveal_url and expires_at (an hour): a one-time page where the person, signed in to the cabinet, sees the new secret; it is made when they open the link, and only then does the old one stop working. Never ask them to paste it here. Ask the person first and call with confirmed: true only after an explicit yes. environment is required: \"sandbox\" or \"live\".",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmed": {
+            "description": "true only after the person said yes to replacing this subscription's secret in this conversation",
+            "type": "boolean"
+          },
+          "environment": {
+            "description": "required: \"sandbox\" (the new secret is answered at once) or \"live\" (a one-time link); there is no default",
+            "type": "string"
+          },
+          "subscription_id": {
+            "description": "required: the subscription, as list_webhooks shows it",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "rotate_webhook_secret"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Simulate a test payment's outcome"
+      },
+      "description": "Ends an unfinished test payment (PENDING, WAITING_FOR_PAYER, QR_TOKEN_CREATED) with an outcome, as Kaspi would: paid → COMPLETED (payment.completed), declined → CANCELLED, expired → EXPIRED, failed → FAILED, each with its webhook to the person's test subscriptions. A payment takes one outcome; a later call answers SANDBOX_OUTCOME_NOT_ALLOWED. Answers the payment in the fields of list_payments. Limited with the other test traffic (RATE_LIMITED, retry_after). environment is required and must be \"sandbox\".",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "environment": {
+            "description": "required: \"sandbox\" — outcomes are for test payments only",
+            "type": "string"
+          },
+          "outcome": {
+            "description": "required: paid (→ COMPLETED), declined (→ CANCELLED), expired (→ EXPIRED) or failed (→ FAILED)",
+            "type": "string"
+          },
+          "payment_id": {
+            "description": "required: the unfinished test payment (PENDING, WAITING_FOR_PAYER or QR_TOKEN_CREATED), as create_test_payment or list_payments shows it",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "simulate_test_payment"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false,
+        "title": "Add a cashbox"
+      },
+      "description": "Starts adding a cashbox (a Kaspi Pay cashier) on live: Kaspi sends an SMS code to the phone of the cashier's Kaspi Pay account, and confirm_add_device with that code finishes it. Arguments: name (as the cabinet shows it), device_name (the name the v2 API addresses the cashbox by: 1 to 32 Latin letters or digits) and phone. Answers challenge_id and expires_at (the code works until then). When every cashbox the plan includes is taken, one more is charged from the organization balance: the tool then refuses with CONFIRMATION_REQUIRED and the price, before any SMS goes out. Tell the person the price and call again with confirmed: true only after they agree. environment is required and must be \"live\".",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmed": {
+            "description": "true only after the person agreed to the price this tool named when it refused; leave it out otherwise",
+            "type": "boolean"
+          },
+          "device_name": {
+            "description": "required: the name the v2 API will address the cashbox by: 1 to 32 Latin letters or digits, not used by another active cashbox of the person",
+            "type": "string"
+          },
+          "environment": {
+            "description": "required: \"live\" (cashboxes are managed on live only; the sandbox has its one test cashbox); there is no default",
+            "type": "string"
+          },
+          "name": {
+            "description": "required: the cashbox's name, as the cabinet will show it",
+            "type": "string"
+          },
+          "phone": {
+            "description": "required: the phone of the cashier's Kaspi Pay account the cashbox works through; Kaspi sends the code there",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "start_add_device"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false,
+        "title": "Test a webhook"
+      },
+      "description": "Sends one signed test event to a subscription's url at once (payment.completed unless event says otherwise) with a made-up payment id; the body carries \"environment\" as the subscription's. It is not kept in list_webhook_deliveries. Answers subscription_id and success; when the url cannot be reached or does not answer 2xx, WEBHOOK_TEST_FAILED says what happened. environment is required: \"sandbox\" or \"live\".",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "environment": {
+            "description": "required: \"sandbox\" or \"live\", where the subscription is; there is no default",
+            "type": "string"
+          },
+          "event": {
+            "description": "the event to send: payment.completed (when left out), payment.expired, payment.cancelled, payment.failed, payment.refunded or payment.refund_failed",
+            "type": "string"
+          },
+          "subscription_id": {
+            "description": "required: the subscription, as list_webhooks shows it",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "test_webhook"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Change a cashbox"
+      },
+      "description": "Changes a cashbox's name or device_name, or both; what is left out stays as it was. device_name is what the v2 API addresses the cashbox by: an integration that sends the old one stops working. Answers the cashbox in the fields of list_devices (session_problem_since and phone_masked are null here). environment is required and must be \"live\".",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "device_id": {
+            "description": "required: the cashbox, as list_devices shows it",
+            "type": "string"
+          },
+          "device_name": {
+            "description": "the new device_name: 1 to 32 Latin letters or digits; left out = as it is",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "environment": {
+            "description": "required: \"live\" (cashboxes are managed on live only; the sandbox has its one test cashbox); there is no default",
+            "type": "string"
+          },
+          "name": {
+            "description": "the new name; left out = as it is",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "name": "update_device"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Change a payment page"
+      },
+      "description": "Changes a payment page that is not archived: name, description, device_id, amount_mode, fixed_amount or fields (the whole form); what is left out stays as it was. A published page must stay fully valid. Answers the page in the fields of get_payment_page.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "amount_mode": {
+            "description": "\"fixed\" or \"tariff\"; left out = as it is",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "description": {
+            "description": "the new description; left out = as it is",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "device_id": {
+            "description": "the new cashbox, as list_devices shows it; left out = as it is",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "fields": {
+            "description": "the whole new form (it replaces the old one); left out = as it is",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "key": {
+                  "description": "required: the field's stable key, e.g. name, email, tariff; unique in the form",
+                  "type": "string"
+                },
+                "label": {
+                  "description": "required: what the client sees",
+                  "type": "string"
+                },
+                "options": {
+                  "description": "select only: the choices",
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "label": {
+                        "description": "required: what the client sees",
+                        "type": "string"
+                      },
+                      "price": {
+                        "description": "the price in KZT when amount_mode is tariff (more than 0 there)",
+                        "type": "number"
+                      },
+                      "value": {
+                        "description": "required: what is stored with the payment",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": [
+                    "null",
+                    "array"
+                  ]
+                },
+                "required": {
+                  "description": "whether the client must fill it",
+                  "type": "boolean"
+                },
+                "type": {
+                  "description": "required: phone, text, email or select",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "fixed_amount": {
+            "description": "the new price in KZT for amount_mode fixed; left out = as it is",
+            "type": [
+              "null",
+              "number"
+            ]
+          },
+          "name": {
+            "description": "the new name; left out = as it is",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "page_id": {
+            "description": "required: the payment page, as list_payment_pages shows it",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "update_payment_page"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Change a webhook"
+      },
+      "description": "Changes a webhook subscription: url, events, is_active (false pauses the deliveries) or description; what is left out stays as it was, and the secret is not touched. Answers the subscription in the fields of list_webhooks. environment is required: \"sandbox\" or \"live\".",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "description": "the new note; left out = as it is",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "environment": {
+            "description": "required: \"sandbox\" or \"live\", where the subscription is; there is no default",
+            "type": "string"
+          },
+          "events": {
+            "description": "the new events, at least one (\"*\" = all; the names of create_webhook); left out = as they are",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "is_active": {
+            "description": "false pauses the deliveries, true resumes them; left out = as it is",
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "subscription_id": {
+            "description": "required: the subscription, as list_webhooks shows it",
+            "type": "string"
+          },
+          "url": {
+            "description": "the new absolute http:// or https:// address; left out = as it is",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "name": "update_webhook"
+    },
+    {
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "Who am I"
+      },
+      "description": "Shows which xPayment account this connection acts for: who signed in through «Войти через xPayment», their organization and role, and the rights (scopes) the user granted to this connection. Read-only.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "name": "whoami",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "client_name": {
+            "description": "the name of the AI client that connected",
+            "type": "string"
+          },
+          "connection_id": {
+            "description": "this connection, as the user sees it under connected AI clients",
+            "type": "string"
+          },
+          "organization_id": {
+            "description": "the user's organization",
+            "type": "string"
+          },
+          "role": {
+            "description": "the user's role in the organization: owner or member",
+            "type": "string"
+          },
+          "scopes": {
+            "description": "the rights the user granted to this connection",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "user_id": {
+            "description": "the signed-in xPayment user",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "organization_id",
+          "role",
+          "scopes",
+          "connection_id",
+          "client_name"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

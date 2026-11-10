@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.321",
+  "partial": false,
+  "costUsd": 1.23,
+  "suite": {
+    "root": "/work/xpayment-ai",
+    "ablation": "none",
+    "tagFilters": [],
+    "threshold": 1
+  },
+  "cases": [
+    {
+      "name": "case-a",
+      "dir": "evals/case-a",
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      },
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "error": null,
+            "graders": [
+              {
+                "name": "never-printed",
+                "passed": true,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "error": null,
+            "graders": [
+              {
+                "name": "never-printed",
+                "passed": true,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "error": null,
+            "graders": [
+              {
+                "name": "never-printed",
+                "passed": true,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "case-b",
+      "dir": "evals/case-b",
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      },
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "error": null,
+            "graders": [
+              {
+                "name": "never-printed",
+                "passed": true,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "error": null,
+            "graders": [
+              {
+                "name": "never-printed",
+                "passed": true,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "error": null,
+            "graders": [
+              {
+                "name": "never-printed",
+                "passed": true,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

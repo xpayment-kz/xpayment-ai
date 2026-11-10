@@ -1,0 +1,16 @@
+{
+  "items": [
+    {
+      "id": "b7a6c5d4-e3f2-4a1b-9c8d-7e6f5a4b3c21",
+      "url": "https://shop.example/xpayment/webhook",
+      "events": ["payment.completed", "payment.expired", "payment.cancelled", "payment.failed", "payment.refunded", "payment.refund_failed"],
+      "is_active": true,
+      "description": "Demo shop",
+      "has_secret": true,
+      "last_success_at": "2026-11-09T08:55:12Z",
+      "last_failure_at": null,
+      "failure_count": 0,
+      "failing_since": null
+    }
+  ]
+}

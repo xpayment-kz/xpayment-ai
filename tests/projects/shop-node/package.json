@@ -1,0 +1,14 @@
+{
+  "name": "shop-node",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A small online shop: orders in memory, no payments yet",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "express": "4.21.2"
+  }
+}
