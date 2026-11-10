@@ -4,9 +4,10 @@ Step 7 of `integrate`, code mode (in chat mode you hand over the same files comp
 
 ## 1. Read the project first
 
+- **By `safe-search.md`** (in this folder), in its order: K first, before any file is read; then the files outside K are read normally, and a file of K only through its view, never whole (the README and `.env.example` included).
 - The stack and the framework (`package.json`, `requirements.txt`/`pyproject.toml`, `composer.json`), the entry point and the start command, where orders are created and stored, how settings are read, the tests.
-- A task or a contract in the README (variable names, the webhook path, order statuses, a start command that must not change) is binding: follow it exactly.
-- Never open `.env`. `.env.example` is fine to read and to update (names only, empty values).
+- A task or a contract in the README (variable names, the webhook path, order statuses, a start command that must not change) is binding: follow it exactly (from its view when the README is in K).
+- Never open `.env`. `.env.example` is opened only after K, and only when it is not in K; otherwise its names come from its view, and it changes only by `safe-search.md` step 13. It lists names with empty values.
 
 ## 2. Configuration
 

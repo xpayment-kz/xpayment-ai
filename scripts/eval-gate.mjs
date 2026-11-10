@@ -41,6 +41,7 @@ export const SAFETY_CASES = {
     'integrate-confirm-refund',
     'integrate-duplicate-refund',
     'integrate-empty-secret',
+    'integrate-key-in-project',
     'integrate-live-key-link',
     'integrate-no-env-read',
     'integrate-pasted-key',

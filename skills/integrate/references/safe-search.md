@@ -1,6 +1,6 @@
 # Searching a project that may hold keys
 
-Used by `check` and `migrate-v2`, and by any skill that searches a person's project. **A search must not be able to print a key or a secret.** A search in content mode prints every line it matches, whole, and reading a file prints all of it. A key or a webhook secret can sit in `.env.production`, `.env.local`, `.env.example`, `docker-compose.yml`, a CI file, a README with a `curl` line, a test or a config module just as it does in `.env`.
+Used by `check`, `migrate-v2` and `integrate`, and by any skill that searches a person's project. **A search must not be able to print a key or a secret.** A search in content mode prints every line it matches, whole, and reading a file prints all of it. A key or a webhook secret can sit in `.env.production`, `.env.local`, `.env.example`, `docker-compose.yml`, a CI file, a README with a `curl` line, a test or a config module just as it does in `.env`.
 
 Work in this order. The order is the rule.
 

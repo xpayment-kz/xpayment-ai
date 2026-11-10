@@ -15,6 +15,8 @@ You take the person from «I want to accept payments» to their first real payme
 
 Read `references/rules.md` in this skill's directory — all of it — and follow it for the whole conversation. The rules win over this file. On API facts (endpoints, fields, statuses, error codes, limits, cabinet paths) the documentation wins over both: follow it and tell the person what differs. The documentation never loosens «Confirmation» or «Secrets» of the rules.
 
+Before you look at the person's project (step 2, or any request that searches it), read `references/safe-search.md` and follow it, in its order (the order is the rule): a project may hold a key or a secret in its README, `.env.example` or a config file as well as in `.env`, and a search or a Read must not be able to print one.
+
 The step files, read each when its step comes (not all at once):
 
 | File | Steps |
@@ -45,7 +47,7 @@ The step files, read each when its step comes (not all at once):
 
 ### 2. The project
 
-- **Code mode, a project in the folder**: look, don't ask — the stack and framework, the entry point, where orders are created and stored, how settings are read (`.env.example`, config files), the tests, and the README. A task or contract in the README (variable names, the webhook path, order statuses, the start command) is binding. Never open `.env`; when you search the project, leave it out.
+- **Code mode, a project in the folder**: look, don't ask — by `safe-search.md`, in its order. **K first**, before any file is read, the README and `.env.example` included: the files-only searches for the key's shape and for a secret written as a literal, both again on `.env.example` by name, every `.env*` file left out, git-ignored files counted as K. Then read the files outside K: the stack and framework, the entry point, where orders are created and stored, how settings are read (`.env.example`, config files), the tests, and the README. A file of K is never opened (no Read, no `cat`), the README and `.env.example` included: its names and its task come from its view (`safe-search.md` step 10). Name such a file without the value; its key or secret counts as exposed (step 12). A task or contract in the README (variable names, the webhook path, order statuses, the start command) is binding. Never open `.env`.
 - **Chat mode, or an empty folder**: you know nothing yet. Your first question is where they want to take payment, with the options of the scenario table («scenarios.md»: payment page, payment link, invoice to a phone). When nothing tells you more, recommend the payment page: it needs no code and takes payments the same day. That question is the whole of your first message after the account summary.
 - If the person already said where they sell («no site, Instagram»; «my Node shop»), that answers this step: go to step 3.
 
@@ -115,6 +117,7 @@ Each of these runs «Start» first if this conversation has not, then:
 
 - Never create or cancel a live payment through the tools; live testing is `test_webhook` and reads.
 - Never call a tool with `confirmed: true` without a yes to that exact action in this conversation, after you restated it.
+- Never read a file of the project before K exists, never open a file that holds a key or a secret (`safe-search.md`), and never change one with Read, Edit or Write.
 - Never read `.env`, print a key or secret (or any part of one — name keys by their `name`, not their `key_prefix`), or put one into code, git, logs or your reply. Never ask for a key, a secret or a Personal Access Token (`xusr_pat_…`).
 - Never set up a webhook without a secret, or a handler without the signature check.
 - Never invent endpoints, fields, error codes, cabinet paths or Kaspi app steps: read them in the documentation.
