@@ -88,7 +88,7 @@ You can reach the same connectors later by Customize → Plugins → xPayment �
 
 The switch «Синхронизировать автоматически» (Sync automatically) is off by default. To turn it on, claude.ai needs the Claude GitHub app: when you try it, a message «Предоставить доступ» (grant access) appears. Without it the marketplace still works, and you update by hand as above.
 
-**Install from an archive instead.** Customize → Plugins → + Add → «Загрузить плагин» (Upload plugin) takes an archive that has `.claude-plugin/plugin.json` at its top level. Build one from a clone of this repository (see the Development section of the [README](../README.md#development)). It installs the same plugin; the author then shows as «xPayment».
+**Install from an archive instead.** Customize → Plugins → + Add → «Загрузить плагин» (Upload plugin) takes an archive that has `.claude-plugin/plugin.json` at its top level. Download the ready one from the release: [xpayment-0.1.0.zip](https://github.com/xpayment-kz/xpayment-ai/releases/download/v0.1.0/xpayment-0.1.0.zip). It is the `plugin/` folder of this repository (the manifest at the top level), with no scripts, tests or evals. It installs the same plugin; the author then shows as «xPayment». (A maintainer builds the archive from a clone with `git archive`, see the Development section of the [README](../README.md#development).)
 
 ## Claude, connector only (no plugin)
 
@@ -158,13 +158,13 @@ On chatgpt.com the account server is added as a custom MCP server. This gives Ch
 
 ChatGPT can take the whole plugin, with its skills, as an archive. **Read this first:** chatgpt.com accepted the archive, but it can only be opened in the ChatGPT desktop app, and we did **not** test it there. The steps below are what was checked on chatgpt.com plus the plugin's own rules for the desktop app.
 
-1. Get an archive of the `plugin/` folder (see the Development section of the [README](../README.md#development)). For 0.1.0 it is 189 KB.
+1. Download the plugin archive from the release: [xpayment-0.1.0.zip](https://github.com/xpayment-kz/xpayment-ai/releases/download/v0.1.0/xpayment-0.1.0.zip). It is the `plugin/` folder of this repository (`.claude-plugin/plugin.json` at its top level); a maintainer builds it with `git archive` (see the Development section of the [README](../README.md#development)).
 2. Plugins → Add → Upload plugin archive (in Russian: Плагины → «Добавить» → «Загрузить архив плагина»). It takes `.tar.gz`, `.tgz` or `.zip` files up to 780 MB.
 3. chatgpt.com showed the archive as version 0.1.0 with «Серверы MCP · 2» (2 MCP servers) and «Навыки · 4» (4 skills), and offered only «Открыть в приложении для компьютера» (open in the desktop app).
 4. In the desktop app, connect `xpayment` and sign in with «Войти через xPayment» (the plugin's rules give this step; it was not run).
 
 **Call it.** `@xPayment` in a chat.
 
-**Update.** Upload the archive of the new release again. A server added as a custom MCP server needs no update.
+**Update.** Upload the archive of the new release again (the `xpayment-<version>.zip` asset on the [releases page](https://github.com/xpayment-kz/xpayment-ai/releases)). A server added as a custom MCP server needs no update.
 
 **What to expect.** If you add both the custom MCP server and the plugin archive, ChatGPT shows two xPayment entries; keep one.
