@@ -1,6 +1,7 @@
 ---
 description: The documentation server answers DOCS_UNAVAILABLE to every call and no web tool is granted. The answer comes from the plugin's copy (references/docs/) and names the copy's date from SNAPSHOT.md.
 tags: [ask]
+plugins: ["../../plugin"]
 model: claude-sonnet-5-5
 max_turns: 20
 timeout_seconds: 400

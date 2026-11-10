@@ -3,8 +3,18 @@
 //
 //   node scripts/plugin-check.mjs [root]
 //
+// root is the repository root (default: the current directory). The plugin itself lives in plugin/ and is all
+// that a user installs: the marketplace at the root (.claude-plugin/marketplace.json) points at "./plugin",
+// and the release archive is `git archive HEAD:plugin`. Everything else (shared/, scripts/, tests/, evals*/,
+// .github/) is development tooling and stays out of plugin/.
+//
 // Prints "plugin-check: ok" and exits 0, or prints one line per problem and exits 1.
 // Node 22, no dependencies.
+//
+// What plugin/ may hold. Only .claude-plugin/plugin.json, plugin.json, .mcp.json, mcp.json, skills/**, LICENSE
+// (identical to the root LICENSE) and README.md. Any other file (a script, a test, an eval, a second manifest)
+// or a symbolic link is a problem line. The same file set as the secret scan is looked at (below), so a
+// git-ignored file such as .DS_Store does not count.
 //
 // Secret scan. Any file of the repository that matches
 //   (xapi|xdev)_(test_)?[0-9a-f]{64}
@@ -37,6 +47,13 @@ const SEMVER_RE = /^\d+\.\d+\.\d+$/;
 const PLUGIN_SCHEMA = 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json';
 const MCP_SCHEMA = 'https://agent-plugins.org/schemas/1.0.0/mcp.schema.json';
 const FORBIDDEN_DIRS = ['hooks', 'agents', 'commands'];
+const PLUGIN_DIR = 'plugin';
+const MARKETPLACE_SOURCE = './plugin';
+const PLUGIN_FILES = ['.claude-plugin/plugin.json', 'plugin.json', '.mcp.json', 'mcp.json', 'LICENSE', 'README.md'];
+const PLUGIN_TREES = ['skills/'];
+/** Paths that belong in plugin/; one at the root means the move to plugin/ is incomplete or was undone. */
+const ROOT_LEFTOVERS = ['.claude-plugin/plugin.json', 'plugin.json', '.mcp.json', 'mcp.json', 'skills'];
+const P = (rel) => `${PLUGIN_DIR}/${rel}`;
 const SHARED_PLUGIN_FIELDS = ['name', 'description', 'homepage', 'repository', 'license', 'author', 'keywords'];
 
 const SECRET_RE = /(xapi|xdev)_(test_)?[0-9a-f]{64}/g;
@@ -158,10 +175,12 @@ export function parseSkill(text) {
 // ---------- checks ----------
 
 function checkPluginManifests(root, problems) {
-  const claude = loadJson(root, '.claude-plugin/plugin.json', problems);
-  const portable = loadJson(root, 'plugin.json', problems);
+  const claudeRel = P('.claude-plugin/plugin.json');
+  const portableRel = P('plugin.json');
+  const claude = loadJson(root, claudeRel, problems);
+  const portable = loadJson(root, portableRel, problems);
 
-  for (const [rel, manifest] of [['.claude-plugin/plugin.json', claude], ['plugin.json', portable]]) {
+  for (const [rel, manifest] of [[claudeRel, claude], [portableRel, portable]]) {
     if (!manifest) continue;
     if (typeof manifest.name !== 'string' || !manifest.name) problems.push(`${rel}: name is missing`);
     if (manifest.version === undefined) {
@@ -173,23 +192,23 @@ function checkPluginManifests(root, problems) {
 
   if (portable) {
     if (Object.keys(portable)[0] !== '$schema' || portable.$schema !== PLUGIN_SCHEMA) {
-      problems.push(`plugin.json: "$schema" must be the first field and equal ${PLUGIN_SCHEMA}`);
+      problems.push(`${portableRel}: "$schema" must be the first field and equal ${PLUGIN_SCHEMA}`);
     }
     if ('displayName' in portable) {
-      problems.push('plugin.json: "displayName" must not be set (only .claude-plugin/plugin.json has it)');
+      problems.push(`${portableRel}: "displayName" must not be set (only ${claudeRel} has it)`);
     }
   }
 
   if (claude && portable) {
     if (claude.version !== portable.version) {
       problems.push(
-        `version differs between .claude-plugin/plugin.json (${short(claude.version)}) and plugin.json (${short(portable.version)})`,
+        `version differs between ${claudeRel} (${short(claude.version)}) and ${portableRel} (${short(portable.version)})`,
       );
     }
     for (const field of SHARED_PLUGIN_FIELDS) {
       if (JSON.stringify(claude[field]) !== JSON.stringify(portable[field])) {
         problems.push(
-          `${field} differs between .claude-plugin/plugin.json (${short(claude[field])}) and plugin.json (${short(portable[field])})`,
+          `${field} differs between ${claudeRel} (${short(claude[field])}) and ${portableRel} (${short(portable[field])})`,
         );
       }
     }
@@ -213,18 +232,18 @@ function checkMarketplace(root, pluginName, problems) {
       continue;
     }
     if (pluginName !== undefined && plugin?.name !== pluginName) {
-      problems.push(`${rel}: plugin name ${short(plugin?.name)} differs from plugin.json name ${short(pluginName)}`);
+      problems.push(`${rel}: plugin name ${short(plugin?.name)} differs from ${P('plugin.json')} name ${short(pluginName)}`);
     }
-    if (plugin?.source !== './') {
-      problems.push(`${rel}: plugin ${short(plugin?.name)} source is ${short(plugin?.source)}, expected "./"`);
+    if (plugin?.source !== MARKETPLACE_SOURCE) {
+      problems.push(`${rel}: plugin ${short(plugin?.name)} source is ${short(plugin?.source)}, expected "${MARKETPLACE_SOURCE}"`);
     }
   }
 }
 
 function checkMcp(root, problems) {
   const files = [
-    { rel: '.mcp.json', type: 'http', schema: false },
-    { rel: 'mcp.json', type: 'streamable-http', schema: true },
+    { rel: P('.mcp.json'), type: 'http', schema: false },
+    { rel: P('mcp.json'), type: 'streamable-http', schema: true },
   ];
   const urls = {};
   for (const { rel, type, schema } of files) {
@@ -260,23 +279,24 @@ function checkMcp(root, problems) {
       }
     }
   }
-  if (urls['.mcp.json'] && urls['mcp.json']) {
-    const a = urls['.mcp.json'];
-    const b = urls['mcp.json'];
+  const [claudeRel, portableRel] = files.map((f) => f.rel);
+  if (urls[claudeRel] && urls[portableRel]) {
+    const a = urls[claudeRel];
+    const b = urls[portableRel];
     const diffs = [];
     for (const key of Object.keys(a)) {
-      if (!(key in b)) diffs.push(`"${key}" only in .mcp.json`);
+      if (!(key in b)) diffs.push(`"${key}" only in ${claudeRel}`);
       else if (a[key] !== b[key]) diffs.push(`"${key}" url ${short(a[key])} vs ${short(b[key])}`);
     }
-    for (const key of Object.keys(b)) if (!(key in a)) diffs.push(`"${key}" only in mcp.json`);
-    if (diffs.length) problems.push(`.mcp.json and mcp.json list different servers or URLs: ${diffs.join('; ')}`);
+    for (const key of Object.keys(b)) if (!(key in a)) diffs.push(`"${key}" only in ${portableRel}`);
+    if (diffs.length) problems.push(`${claudeRel} and ${portableRel} list different servers or URLs: ${diffs.join('; ')}`);
   }
 }
 
 function checkSkills(root, pluginVersion, problems) {
-  const skillsDir = path.join(root, 'skills');
+  const skillsDir = path.join(root, P('skills'));
   if (!isDir(skillsDir)) {
-    problems.push('skills/: missing');
+    problems.push(`${P('skills')}/: missing`);
     return [];
   }
   const skillNames = fs
@@ -286,10 +306,10 @@ function checkSkills(root, pluginVersion, problems) {
     .sort();
 
   for (const dirName of skillNames) {
-    const rel = `skills/${dirName}/SKILL.md`;
+    const rel = P(`skills/${dirName}/SKILL.md`);
     const file = path.join(root, rel);
     if (!isFile(file)) {
-      problems.push(`skills/${dirName}: SKILL.md is missing`);
+      problems.push(`${P(`skills/${dirName}`)}: SKILL.md is missing`);
       continue;
     }
     const text = fs.readFileSync(file, 'utf8');
@@ -353,16 +373,33 @@ function checkSkills(root, pluginVersion, problems) {
   return skillNames;
 }
 
-/** Relative markdown links without a scheme must point to existing files. */
-function checkLinks(root, skillNames, problems) {
-  const files = [];
-  for (const name of skillNames) {
-    if (isFile(path.join(root, `skills/${name}/SKILL.md`))) files.push(`skills/${name}/SKILL.md`);
-    const refs = path.join(root, `skills/${name}/references`);
-    if (isDir(refs)) {
-      for (const rel of walk(refs)) if (rel.endsWith('.md')) files.push(`skills/${name}/references/${rel}`);
-    }
+/** True when p is base itself or below it (paths already normalized). */
+function isInside(base, p) {
+  const rel = path.relative(base, p);
+  return rel === '' || (rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel));
+}
+
+function realpath(p) {
+  try {
+    return fs.realpathSync(p);
+  } catch {
+    return null;
   }
+}
+
+/**
+ * Relative markdown links without a scheme, in every .md file under plugin/, must point to an existing file
+ * inside plugin/. A target outside plugin/ (../../../shared/rules.md, ../README.md) exists in the repository
+ * but not in an install, so it is a problem even when the file is there; so is a target reached through a
+ * symbolic link that leads out of plugin/.
+ */
+function checkLinks(root, problems) {
+  const pluginRoot = path.join(root, PLUGIN_DIR);
+  if (!isDir(pluginRoot)) return;
+  const pluginReal = realpath(pluginRoot) ?? pluginRoot;
+  const files = walk(pluginRoot, (_rel, name) => SKIP_DIR_NAMES.has(name))
+    .filter((rel) => rel.endsWith('.md'))
+    .map((rel) => P(rel));
   for (const rel of files) {
     let text = fs.readFileSync(path.join(root, rel), 'utf8');
     text = text.replace(/^(```|~~~)[^\n]*\n[\s\S]*?^\1[^\n]*$/gm, '').replace(/`[^`\n]*`/g, '');
@@ -376,21 +413,26 @@ function checkLinks(root, skillNames, problems) {
       } catch {
         // keep the raw text
       }
-      if (!fs.existsSync(path.resolve(root, path.dirname(rel), target))) {
+      const resolved = path.resolve(root, path.dirname(rel), target);
+      const exists = fs.existsSync(resolved);
+      const real = exists ? realpath(resolved) : null;
+      if (!isInside(pluginRoot, resolved) || (real !== null && !isInside(pluginReal, real))) {
+        problems.push(`${rel}: link "${m[1]}" points outside ${PLUGIN_DIR}/ (an install has only ${PLUGIN_DIR}/)`);
+      } else if (!exists) {
         problems.push(`${rel}: link "${m[1]}" points to a missing file`);
       }
     }
   }
 }
 
-/** Every file of shared/ (recursively) must be identical in skills/<s>/references/. */
+/** Every file of shared/ (recursively) must be identical in plugin/skills/<s>/references/. */
 function checkShared(root, skillNames, problems) {
   const sharedDir = path.join(root, 'shared');
   if (!isDir(sharedDir)) return;
   for (const rel of walk(sharedDir)) {
     const source = fs.readFileSync(path.join(sharedDir, rel));
     for (const name of skillNames) {
-      const targetRel = `skills/${name}/references/${rel}`;
+      const targetRel = P(`skills/${name}/references/${rel}`);
       const target = path.join(root, targetRel);
       if (!isFile(target)) {
         problems.push(`${targetRel}: missing (copy of shared/${rel}; run node scripts/sync.mjs)`);
@@ -403,9 +445,86 @@ function checkShared(root, skillNames, problems) {
 
 function checkForbiddenDirs(root, problems) {
   for (const dir of FORBIDDEN_DIRS) {
-    if (fs.existsSync(path.join(root, dir))) {
-      problems.push(`${dir}/ must not exist (the plugin has only skills and MCP)`);
+    if (fs.existsSync(path.join(root, P(dir)))) {
+      problems.push(`${P(dir)}/ must not exist (the plugin has only skills and MCP)`);
     }
+  }
+}
+
+function lstat(file) {
+  try {
+    return fs.lstatSync(file);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The entries of plugin/ (paths relative to plugin/), from the same file set as the secret scan: in git the
+ * tracked and the new not-ignored files, outside git a walk. Symbolic links are listed too (statSync would
+ * follow them and hide one that points at a directory).
+ */
+function pluginEntries(root) {
+  const base = path.join(root, PLUGIN_DIR);
+  if (!isDir(base)) return [];
+  if (fs.existsSync(path.join(root, '.git'))) {
+    const r = spawnSync('git', ['-C', root, 'ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', PLUGIN_DIR], {
+      encoding: 'buffer',
+      maxBuffer: 256 * 1024 * 1024,
+    });
+    if (r.status === 0) {
+      const names = new Set(r.stdout.toString('utf8').split('\0').filter(Boolean));
+      return [...names]
+        .filter((rel) => rel.startsWith(`${PLUGIN_DIR}/`) && lstat(path.join(root, rel)) !== null)
+        .map((rel) => rel.slice(PLUGIN_DIR.length + 1))
+        .sort();
+    }
+  }
+  const out = [];
+  const visit = (rel) => {
+    for (const entry of fs.readdirSync(path.join(base, rel), { withFileTypes: true })) {
+      const entryRel = rel ? `${rel}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        if (!SKIP_DIR_NAMES.has(entry.name)) visit(entryRel);
+      } else {
+        out.push(entryRel);
+      }
+    }
+  };
+  visit('');
+  return out.sort();
+}
+
+/** plugin/ holds the plugin and nothing else: no script, test or eval reaches a user's machine. */
+function checkPluginContents(root, problems) {
+  if (!isDir(path.join(root, PLUGIN_DIR))) {
+    problems.push(`${PLUGIN_DIR}/: missing (the plugin lives in ${PLUGIN_DIR}/)`);
+    return;
+  }
+  const allowed = [...PLUGIN_FILES, ...PLUGIN_TREES.map((t) => `${t}**`)].join(', ');
+  for (const rel of pluginEntries(root)) {
+    if (FORBIDDEN_DIRS.some((dir) => rel.startsWith(`${dir}/`))) continue; // reported by checkForbiddenDirs
+    if (lstat(path.join(root, P(rel)))?.isSymbolicLink()) {
+      problems.push(`${P(rel)}: a symbolic link (${PLUGIN_DIR}/ holds plain files only)`);
+    } else if (!PLUGIN_FILES.includes(rel) && !PLUGIN_TREES.some((t) => rel.startsWith(t))) {
+      problems.push(`${P(rel)}: not part of the plugin (${PLUGIN_DIR}/ holds only ${allowed}); move it out of ${PLUGIN_DIR}/`);
+    }
+  }
+
+  const license = path.join(root, 'LICENSE');
+  const copy = path.join(root, P('LICENSE'));
+  if (!isFile(license)) problems.push('LICENSE: missing');
+  if (!isFile(copy)) problems.push(`${P('LICENSE')}: missing (a copy of LICENSE; run node scripts/sync.mjs)`);
+  else if (isFile(license) && !fs.readFileSync(license).equals(fs.readFileSync(copy))) {
+    problems.push(`${P('LICENSE')}: differs from LICENSE (run node scripts/sync.mjs)`);
+  }
+  if (!isFile(path.join(root, P('README.md')))) problems.push(`${P('README.md')}: missing (the plugin's own short README)`);
+}
+
+/** The plugin's files at the root would mean the move to plugin/ is incomplete (or a merge brought them back). */
+function checkRootLeftovers(root, problems) {
+  for (const rel of ROOT_LEFTOVERS) {
+    if (lstat(path.join(root, rel)) !== null) problems.push(`${rel}: belongs in ${PLUGIN_DIR}/, not at the repository root`);
   }
 }
 
@@ -464,9 +583,11 @@ export function check(root) {
   checkMarketplace(root, plugin.name, problems);
   checkMcp(root, problems);
   const skillNames = checkSkills(root, plugin.version, problems);
-  checkLinks(root, skillNames, problems);
+  checkLinks(root, problems);
   checkShared(root, skillNames, problems);
   checkForbiddenDirs(root, problems);
+  checkPluginContents(root, problems);
+  checkRootLeftovers(root, problems);
   checkSecrets(root, problems);
   checkLocalTraces(root, problems);
   return problems;

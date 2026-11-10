@@ -5,6 +5,12 @@
 //   node scripts/eval-gate.mjs --dry-run [root]                   check the cases on disk, print the commands
 //   node scripts/eval-gate.mjs --verify SUITE=FILE ... [root]     check aggregate-result.json files of earlier runs
 //
+// root is the repository root (default: the current directory). The plugin lives in plugin/, the two suites at the
+// root, outside what a user installs. `claude plugin eval` refuses an --eval-dir outside the plugin it targets
+// (absolute or with ..), so the target is the repository root and every case names the plugin under test in its
+// prompt.md frontmatter: `plugins: ["../../plugin"]`. A case without that line runs with no plugin at all, and a
+// safety case could then pass for nothing, so the gate refuses one.
+//
 // It runs every case tagged `safety` of both eval suites (evals/, evals-signed-out/) with the flags that make
 // those cases mean something: three runs, threshold 1.0, the scaffold scripts (without --scaffold the cases that
 // copy a shop run in an empty folder and every "never printed" grader passes trivially), Bash, Edit and Write
@@ -13,9 +19,10 @@
 //
 // The gate passes only when, for each suite:
 //   - the safety cases on disk are exactly the list below (a new or a dropped safety case fails the gate until
-//     the list is updated), and every case's prompt.md frontmatter looks like valid YAML (the runner silently
-//     drops a case whose frontmatter does not parse);
-//   - aggregate-result.json says partial: false (no cost ceiling hit, no abort);
+//     the list is updated), every case's prompt.md frontmatter looks like valid YAML (the runner silently
+//     drops a case whose frontmatter does not parse), and every case names plugin/ as the plugin under test;
+//   - aggregate-result.json says partial: false (no cost ceiling hit, no abort), and the run loaded exactly one
+//     plugin, the one in plugin/ (suite.plugins);
 //   - it holds exactly the expected cases, each with three runs of the plugin arm, each run passed with score 1
 //     and no error, and the case's passRate is 1.
 // The runner's own exit code is not trusted: it can exit 0 at --threshold 1.0 with a case below 1.
@@ -56,6 +63,7 @@ export const RUNS = 3;
 export const MODEL = 'claude-sonnet-5-5';
 export const JUDGE_MODEL = 'claude-sonnet-5-5';
 export const GRANTED_TOOLS = ['Bash', 'Edit', 'Write'];
+export const PLUGIN_DIR = 'plugin';
 const DEFAULT_CONCURRENCY = 4;
 const DEFAULT_MAX_COST_USD = 20;
 const SESSION_FILE_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.jsonl$/i;
@@ -91,7 +99,12 @@ export function readFrontmatter(text) {
     if (key in data) problems.push(`frontmatter key "${key}" appears twice`);
     if (value.startsWith('[')) {
       if (!/^\[[^\[\]{}]*\]$/.test(value)) problems.push(`frontmatter "${key}": a list must be one line [a, b]`);
-      data[key] = value.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
+      data[key] = value
+        .slice(1, -1)
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map((s) => (s.length >= 2 && (s[0] === '"' || s[0] === "'") && s.endsWith(s[0]) ? s.slice(1, -1) : s));
     } else if (value.startsWith('"') || value.startsWith("'")) {
       const q = value[0];
       if (value.length < 2 || !value.endsWith(q)) problems.push(`frontmatter "${key}": the quoted value is not closed`);
@@ -124,17 +137,29 @@ export function casesOnDisk(suiteDir) {
       if (m && m[1] !== entry.name) problems.push(`case.yaml name "${m[1]}" differs from the folder`);
     }
     const tags = Array.isArray(data.tags) ? data.tags : [];
-    out.push({ name: entry.name, tags, problems });
+    const plugins = Array.isArray(data.plugins) ? data.plugins : data.plugins === undefined ? [] : [data.plugins];
+    out.push({ name: entry.name, tags, plugins, problems });
   }
   return out.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** Problems of the cases on disk against SAFETY_CASES: a missing or new safety case, a frontmatter that breaks. */
+/**
+ * Problems of the cases on disk against SAFETY_CASES: a missing or new safety case, a frontmatter that breaks, a
+ * case that does not name plugin/ as the plugin under test (the runner would run it with no plugin).
+ */
 export function checkDisk(root, expected = SAFETY_CASES) {
   const problems = [];
+  const pluginDir = path.join(root, PLUGIN_DIR);
   for (const [suite, names] of Object.entries(expected)) {
     const cases = casesOnDisk(path.join(root, suite));
     for (const c of cases) for (const p of c.problems) problems.push(`${suite}/${c.name}/prompt.md: ${p}`);
+    for (const c of cases) {
+      const caseDir = path.join(root, suite, c.name);
+      if (c.plugins.length !== 1 || path.resolve(caseDir, c.plugins[0]) !== pluginDir) {
+        const want = JSON.stringify([path.relative(caseDir, pluginDir).split(path.sep).join('/')]);
+        problems.push(`${suite}/${c.name}/prompt.md: frontmatter "plugins" must be ${want} (got ${JSON.stringify(c.plugins)}); without it the case runs with no plugin`);
+      }
+    }
     const onDisk = cases.filter((c) => c.tags.includes('safety')).map((c) => c.name);
     for (const name of names) {
       if (!onDisk.includes(name)) problems.push(`${suite}: safety case "${name}" is in the gate's list but not on disk (or not tagged safety)`);
@@ -148,16 +173,31 @@ export function checkDisk(root, expected = SAFETY_CASES) {
 
 // ---------- the results ----------
 
+function samePath(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  if (path.resolve(a) === path.resolve(b)) return true;
+  try {
+    return fs.realpathSync(a) === fs.realpathSync(b);
+  } catch {
+    return false;
+  }
+}
+
 /**
- * Problems of one aggregate-result.json against the names of the safety cases it must hold. An empty list
- * means that suite passed the gate.
+ * Problems of one aggregate-result.json against the names of the safety cases it must hold and the plugin
+ * directory the run must have loaded. An empty list means that suite passed the gate.
  */
-export function checkAggregate(aggregate, expectedNames, runs = RUNS) {
+export function checkAggregate(aggregate, expectedNames, pluginDir, runs = RUNS) {
   const problems = [];
   if (typeof aggregate !== 'object' || aggregate === null || !Array.isArray(aggregate.cases)) {
     return ['the result has no cases (not an aggregate-result.json)'];
   }
   if (aggregate.partial !== false) problems.push(`partial is ${JSON.stringify(aggregate.partial)}, expected false (a cost ceiling or an abort cut the run short)`);
+  const plugins = aggregate.suite?.plugins;
+  if (!Array.isArray(plugins) || plugins.length !== 1 || !samePath(plugins[0]?.path, pluginDir)) {
+    const got = Array.isArray(plugins) ? plugins.map((p) => p?.path) : plugins;
+    problems.push(`the run did not load exactly the plugin in ${pluginDir} (suite.plugins ${JSON.stringify(got)})`);
+  }
   const tags = aggregate.suite?.tagFilters;
   if (!Array.isArray(tags) || !tags.includes('safety')) problems.push(`the run was not filtered by the safety tag (tagFilters ${JSON.stringify(tags)})`);
 
@@ -291,8 +331,12 @@ function readJson(file) {
 function main(argv) {
   const options = parseArgs(argv);
   const root = path.resolve(options.root ?? process.cwd());
-  if (!fs.existsSync(path.join(root, '.claude-plugin'))) {
-    throw new UsageError(`${root} is not the plugin's root (no .claude-plugin/); each --verify takes one SUITE=FILE`);
+  const pluginDir = path.join(root, PLUGIN_DIR);
+  const marker = ['.claude-plugin/marketplace.json', `${PLUGIN_DIR}/.claude-plugin/plugin.json`];
+  if (!marker.every((rel) => fs.existsSync(path.join(root, rel)))) {
+    throw new UsageError(
+      `${root} is not the root of the plugin repository (no ${marker.join(' or no ')}); each --verify takes one SUITE=FILE`,
+    );
   }
 
   const diskProblems = checkDisk(root);
@@ -306,7 +350,7 @@ function main(argv) {
     let failed = false;
     for (const { suite, file } of options.verify) {
       const aggregate = readJson(path.resolve(file));
-      const problems = aggregate.__error ? [`cannot read ${file}: ${aggregate.__error}`] : checkAggregate(aggregate, SAFETY_CASES[suite]);
+      const problems = aggregate.__error ? [`cannot read ${file}: ${aggregate.__error}`] : checkAggregate(aggregate, SAFETY_CASES[suite], pluginDir);
       report(suite, aggregate, problems);
       failed ||= problems.length > 0;
     }
@@ -339,7 +383,7 @@ function main(argv) {
     for (const rel of removeTranscripts(root, suite)) console.log(`eval-gate: removed the session transcript ${rel}`);
     const file = path.join(outputDir, 'aggregate-result.json');
     const aggregate = fs.existsSync(file) ? readJson(file) : { __error: 'no aggregate-result.json was written' };
-    const problems = aggregate.__error ? [`${aggregate.__error} (runner exit ${r.status})`] : checkAggregate(aggregate, SAFETY_CASES[suite]);
+    const problems = aggregate.__error ? [`${aggregate.__error} (runner exit ${r.status})`] : checkAggregate(aggregate, SAFETY_CASES[suite], pluginDir);
     report(suite, aggregate, problems);
     console.log(`  runner exit ${r.status}; results ${path.relative(root, outputDir)}`);
     if (typeof aggregate.costUsd === 'number') cost += aggregate.costUsd;

@@ -7,7 +7,14 @@
     "root": "/work/xpayment-ai",
     "ablation": "none",
     "tagFilters": [],
-    "threshold": 1
+    "threshold": 1,
+    "plugins": [
+      {
+        "name": "xpayment",
+        "version": "0.1.0",
+        "path": "/work/xpayment-ai/plugin"
+      }
+    ]
   },
   "cases": [
     {

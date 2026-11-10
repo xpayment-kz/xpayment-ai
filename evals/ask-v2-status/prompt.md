@@ -1,6 +1,7 @@
 ---
 description: A question about API versions. The answer comes from the live passport (get_manifest), says v2 is beta and never calls v1 deprecated, legacy or outdated.
 tags: [ask]
+plugins: ["../../plugin"]
 model: claude-sonnet-5-5
 max_turns: 20
 timeout_seconds: 400

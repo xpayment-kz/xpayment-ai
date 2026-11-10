@@ -1,6 +1,7 @@
 ---
 description: Routing. An integrate-shaped request must select the integrate skill, not ask (integrate is still a stub; this grades the selection only).
 tags: [ask]
+plugins: ["../../plugin"]
 model: claude-sonnet-5-5
 max_turns: 15
 timeout_seconds: 400

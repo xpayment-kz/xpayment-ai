@@ -58,16 +58,19 @@ const PORTABLE_PLUGIN = `{
   "keywords": ["payments", "xpayment"]
 }
 `;
-const MARKETPLACE = '{"name":"xpayment","owner":{"name":"xPayment"},"plugins":[{"name":"xpayment","source":"./"}]}\n';
+const MARKETPLACE = '{"name":"xpayment","owner":{"name":"xPayment"},"plugins":[{"name":"xpayment","source":"./plugin"}]}\n';
+const LICENSE = 'MIT License\n\nCopyright (c) xPayment\n';
 
 function makeRepo(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sync-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  write(root, '.claude-plugin/plugin.json', CLAUDE_PLUGIN);
-  write(root, 'plugin.json', PORTABLE_PLUGIN);
+  write(root, 'plugin/.claude-plugin/plugin.json', CLAUDE_PLUGIN);
+  write(root, 'plugin/plugin.json', PORTABLE_PLUGIN);
   write(root, '.claude-plugin/marketplace.json', MARKETPLACE);
-  for (const name of ['ask', 'check']) write(root, `skills/${name}/SKILL.md`, skillMd(name));
-  write(root, 'skills/ask/references/only-ask.md', '# only in ask\n');
+  write(root, 'LICENSE', LICENSE);
+  write(root, 'plugin/LICENSE', LICENSE);
+  for (const name of ['ask', 'check']) write(root, `plugin/skills/${name}/SKILL.md`, skillMd(name));
+  write(root, 'plugin/skills/ask/references/only-ask.md', '# only in ask\n');
   write(root, 'shared/glossary.md', '# Glossary\n');
   write(root, 'shared/api/v2/errors.md', '# Errors\n');
   return root;
@@ -114,38 +117,61 @@ const LLMS = '# xPayment docs\n\nEverything about payments.\n';
 
 // ---------- shared/ → references/ ----------
 
-test('copies every file of shared/ (recursively) into each skills/*/references/, keeps skill-only files, removes nothing', async (t) => {
+test('copies every file of shared/ (recursively) into each plugin/skills/*/references/, keeps skill-only files, removes nothing', async (t) => {
   const root = makeRepo(t);
   const before = snapshot(root);
   const { code, out } = await run([root]);
   assert.equal(code, 0, out);
 
   for (const skill of ['ask', 'check']) {
-    assert.equal(read(root, `skills/${skill}/references/glossary.md`), '# Glossary\n');
-    assert.equal(read(root, `skills/${skill}/references/api/v2/errors.md`), '# Errors\n');
+    assert.equal(read(root, `plugin/skills/${skill}/references/glossary.md`), '# Glossary\n');
+    assert.equal(read(root, `plugin/skills/${skill}/references/api/v2/errors.md`), '# Errors\n');
   }
   // Nothing removed or changed apart from the new copies.
   const after = snapshot(root);
   for (const [file, content] of Object.entries(before)) assert.equal(after[file], content, `${file} changed`);
-  assert.equal(read(root, 'skills/ask/references/only-ask.md'), '# only in ask\n');
+  assert.equal(read(root, 'plugin/skills/ask/references/only-ask.md'), '# only in ask\n');
   assert.equal(Object.keys(after).length, Object.keys(before).length + 4);
 });
 
 test('overwrites a stale copy and is idempotent', async (t) => {
   const root = makeRepo(t);
-  write(root, 'skills/check/references/glossary.md', '# Old\n');
+  write(root, 'plugin/skills/check/references/glossary.md', '# Old\n');
   assert.equal((await run([root])).code, 0);
-  assert.equal(read(root, 'skills/check/references/glossary.md'), '# Glossary\n');
+  assert.equal(read(root, 'plugin/skills/check/references/glossary.md'), '# Glossary\n');
   const first = snapshot(root);
   assert.equal((await run([root])).code, 0);
   assert.deepEqual(snapshot(root), first);
 });
 
-test('files in skills/ that are not skill directories are ignored', async (t) => {
+test('files in plugin/skills/ that are not skill directories are ignored', async (t) => {
   const root = makeRepo(t);
-  write(root, 'skills/.DS_Store', 'x');
+  write(root, 'plugin/skills/.DS_Store', 'x');
   assert.equal((await run([root])).code, 0);
-  assert.equal(fs.existsSync(path.join(root, 'skills/.DS_Store/references')), false);
+  assert.equal(fs.existsSync(path.join(root, 'plugin/skills/.DS_Store/references')), false);
+});
+
+test('copies LICENSE into plugin/LICENSE when it differs, and leaves an equal copy alone', async (t) => {
+  const root = makeRepo(t);
+  write(root, 'plugin/LICENSE', 'old\n');
+  const { code, out } = await run([root]);
+  assert.equal(code, 0, out);
+  assert.equal(read(root, 'plugin/LICENSE'), LICENSE);
+  assert.match(out, /LICENSE copied to plugin\/LICENSE/);
+  const again = await run([root]);
+  assert.doesNotMatch(again.out, /LICENSE copied/);
+
+  fs.rmSync(path.join(root, 'plugin/LICENSE'));
+  assert.equal((await run([root])).code, 0);
+  assert.equal(read(root, 'plugin/LICENSE'), LICENSE);
+});
+
+test('nothing is written outside plugin/ and shared/ (no skills/ at the root)', async (t) => {
+  const root = makeRepo(t);
+  assert.equal((await run(['--version', '1.2.3', root])).code, 0);
+  assert.equal(fs.existsSync(path.join(root, 'skills')), false);
+  assert.equal(fs.existsSync(path.join(root, 'plugin.json')), false);
+  assert.equal(fs.existsSync(path.join(root, '.claude-plugin/plugin.json')), false);
 });
 
 test('works without a shared/ directory', async (t) => {
@@ -161,7 +187,7 @@ test('defaults to the current directory when no root is given', async (t) => {
     child.on('error', reject);
     child.on('close', (code) => { assert.equal(code, 0); resolve(); });
   });
-  assert.equal(read(root, 'skills/ask/references/glossary.md'), '# Glossary\n');
+  assert.equal(read(root, 'plugin/skills/ask/references/glossary.md'), '# Glossary\n');
 });
 
 test('unknown option → exit 2, nothing changed', async (t) => {
@@ -180,14 +206,14 @@ test('--version 1.2.3 sets the version in both plugin.json files, every SKILL.md
   const { code, out } = await run(['--version', '1.2.3', root]);
   assert.equal(code, 0, out);
 
-  assert.equal(JSON.parse(read(root, '.claude-plugin/plugin.json')).version, '1.2.3');
-  assert.equal(JSON.parse(read(root, 'plugin.json')).version, '1.2.3');
+  assert.equal(JSON.parse(read(root, 'plugin/.claude-plugin/plugin.json')).version, '1.2.3');
+  assert.equal(JSON.parse(read(root, 'plugin/plugin.json')).version, '1.2.3');
   // Formatting is preserved: only the version string changed.
-  assert.equal(read(root, '.claude-plugin/plugin.json'), CLAUDE_PLUGIN.replace('"0.1.0"', '"1.2.3"'));
-  assert.equal(read(root, 'plugin.json'), PORTABLE_PLUGIN.replace('"0.1.0"', '"1.2.3"'));
+  assert.equal(read(root, 'plugin/.claude-plugin/plugin.json'), CLAUDE_PLUGIN.replace('"0.1.0"', '"1.2.3"'));
+  assert.equal(read(root, 'plugin/plugin.json'), PORTABLE_PLUGIN.replace('"0.1.0"', '"1.2.3"'));
 
   for (const skill of ['ask', 'check']) {
-    const text = read(root, `skills/${skill}/SKILL.md`);
+    const text = read(root, `plugin/skills/${skill}/SKILL.md`);
     assert.equal(
       text,
       skillMd(skill).replace('  version: "0.1.0"', '  version: "1.2.3"').replace('Plugin version: 0.1.0.', 'Plugin version: 1.2.3.'),
@@ -200,7 +226,7 @@ test('--version 1.2.3 sets the version in both plugin.json files, every SKILL.md
 test('--version also reaches skills synced from shared/ (nothing there carries a version)', async (t) => {
   const root = makeRepo(t);
   assert.equal((await run(['--version', '2.0.0', root])).code, 0);
-  assert.equal(read(root, 'skills/ask/references/glossary.md'), '# Glossary\n');
+  assert.equal(read(root, 'plugin/skills/ask/references/glossary.md'), '# Glossary\n');
 });
 
 test('--version with a value that is not X.Y.Z → exit 2, nothing changed', async (t) => {
@@ -216,7 +242,7 @@ test('--version with a value that is not X.Y.Z → exit 2, nothing changed', asy
 
 test('--version with a plugin.json that cannot be updated → exit 1, nothing changed', async (t) => {
   const root = makeRepo(t);
-  write(root, 'plugin.json', '{ "name": "xpayment" }\n');
+  write(root, 'plugin/plugin.json', '{ "name": "xpayment" }\n');
   const before = snapshot(root);
   const { code, out } = await run(['--version', '1.2.3', root]);
   assert.equal(code, 1, out);
@@ -245,9 +271,9 @@ test('--docs fetches /ai/manifest.json and /llms-full.txt from --docs-base into 
 
   // The fresh snapshot is synced to every skill in the same run.
   for (const skill of ['ask', 'check']) {
-    assert.equal(read(root, `skills/${skill}/references/docs/llms-full.txt`), LLMS);
-    assert.equal(read(root, `skills/${skill}/references/docs/SNAPSHOT.md`), snapshotMd);
-    assert.equal(read(root, `skills/${skill}/references/docs/manifest.json`), MANIFEST);
+    assert.equal(read(root, `plugin/skills/${skill}/references/docs/llms-full.txt`), LLMS);
+    assert.equal(read(root, `plugin/skills/${skill}/references/docs/SNAPSHOT.md`), snapshotMd);
+    assert.equal(read(root, `plugin/skills/${skill}/references/docs/manifest.json`), MANIFEST);
   }
 });
 

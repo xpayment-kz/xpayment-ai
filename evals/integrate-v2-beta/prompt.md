@@ -1,6 +1,7 @@
 ---
 description: The API version step of integrate. v2 is recommended and named beta; v1 is stable and never called deprecated, legacy or outdated.
 tags: [integrate]
+plugins: ["../../plugin"]
 model: claude-sonnet-5-5
 max_turns: 30
 timeout_seconds: 600
