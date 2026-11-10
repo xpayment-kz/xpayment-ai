@@ -1,6 +1,90 @@
-# xpayment — the xPayment plugin for Claude and ChatGPT
+# xpayment — the xPayment plugin for Claude, Codex and ChatGPT
 
-Accept Kaspi Pay payments through [xPayment](https://xpayment.kz) with your AI assistant. Installation instructions come with the first release.
+English · [Русский](README.ru.md)
+
+Accept Kaspi Pay payments through [xPayment](https://xpayment.kz) with your own AI assistant. The plugin takes you from zero to a first real payment: it signs in to your xPayment account, prepares the cashbox, runs a full test cycle in the sandbox, writes the integration code or publishes a payment page, sets up the webhook and switches to live. It is text and configuration only: four skills (instructions for the AI) and the addresses of two MCP servers. It ships no scripts and no hooks.
+
+## Safety
+
+- **You sign in through xPayment.** You sign in on xPayment's own page, «Войти через xPayment». Then a consent page lists the rights the AI asks for, and you allow or deny them.
+- **Dangerous actions need your yes in the chat.** Removing a cashbox, revoking a key, deleting a webhook subscription or replacing its secret, archiving or publishing a payment page, a refund on a real payment, and a cashbox beyond your plan are done only after you say yes to that exact action. A general «do everything» does not count.
+- **Live keys and webhook secrets never pass through the chat.** The AI gives you a one-time link (valid for an hour); you open it, see the value once and save it yourself, for example in `.env`. If you paste a key into the chat anyway, the AI tells you to replace it.
+- **Test first.** The whole cycle runs in the sandbox with test keys (`xapi_test_…`): no money, no Kaspi. The AI cannot create a real payment, and it changes live objects only when you ask for live.
+- **You can see and stop it.** What the AI did, and revoking its access, are in the cabinet: «Настройки → Подключённые AI».
+- **Your data goes to the AI service you chose.** What the AI reads from your account, including payers' phone numbers and email addresses, is sent to that service (Claude, ChatGPT or Codex).
+
+## Install
+
+The plugin is `xpayment` in this repository. Short steps; every step with the exact labels is in [docs/platforms.md](docs/platforms.md).
+
+- **Claude Code** (2.1.319 or later):
+
+  ```sh
+  claude plugin marketplace add xpayment-kz/xpayment-ai
+  claude plugin install xpayment@xpayment
+  ```
+
+  Then sign in to your account: `/mcp` → `plugin:xpayment:xpayment` → Authenticate.
+- **Claude (claude.ai, desktop app, Cowork):** Customize → Plugins → + Add → «Добавить маркетплейс» → «Добавить из репозитория» → type `xpayment-kz/xpayment-ai` → «Синхронизация» → the card «xPayment» → «Добавить». Then connect both connectors in the plugin (Connectors → Connect) and sign in to `xpayment` with «Войти через xPayment».
+- **Claude, connector only (no plugin, no skills):** Customize → Connectors → + Add → «Добавить пользовательский коннектор», with `https://api.xpayment.kz/mcp/docs` and `https://api.xpayment.kz/mcp`.
+- **Codex CLI** (checked on 0.167.0):
+
+  ```sh
+  codex plugin marketplace add xpayment-kz/xpayment-ai
+  codex plugin add xpayment@xpayment
+  codex mcp login xpayment
+  ```
+
+- **ChatGPT on the web (tools only, no skills):** Plugins → Add → Add custom MCP server: name `xPayment`, server URL `https://api.xpayment.kz/mcp`, authentication OAuth; then sign in with «Войти через xPayment».
+- **ChatGPT desktop app:** upload the plugin archive (Plugins → Add → Upload plugin archive). chatgpt.com accepted the archive, but it runs only in the desktop app, and it was **not tested there**.
+
+Checked on 2026-11-10; details, what you should see and what to expect on each platform are in [docs/platforms.md](docs/platforms.md).
+
+## First message
+
+When the plugin is installed, write to your assistant:
+
+> Connect xPayment payments
+
+or in Russian: «Подключи приём оплаты через xPayment». The `integrate` skill starts, asks one question at a time and does the work itself.
+
+## Skills
+
+| Skill | What it does |
+|---|---|
+| `ask` | Answers questions about xPayment from the live documentation and, if you are signed in, from your account. Changes nothing. |
+| `integrate` | From sign-in to the first live payment: the scenario, the account and the cashbox, a full cycle in the sandbox, the code or a payment page, the webhook and the switch to live. |
+| `migrate-v2` | Moves an integration from API v1 to API v2 (beta) behind a flag, without downtime, and revokes the v1 keys last. |
+| `check` | Reviews an integration (code and account) against the current documentation and reports problems by severity, with fixes. |
+
+How to call a skill:
+
+| Platform | Call |
+|---|---|
+| Claude Code | `/xpayment:ask`, `/xpayment:integrate`, `/xpayment:migrate-v2`, `/xpayment:check` |
+| Claude (claude.ai) | `/integrate` (the button «Попробовать в чате» opens a chat with it); a skill also starts when your request matches it |
+| Codex | the skills are listed as `xpayment:ask`, `xpayment:check`, `xpayment:integrate`, `xpayment:migrate-v2` |
+| ChatGPT | `@xPayment` in a chat (a custom MCP server has tools but no skills) |
+
+## Update
+
+- **Claude Code:** `claude plugin marketplace update xpayment`, then `claude plugin update xpayment@xpayment`, then `/reload-plugins` or a new session. Claude Code keeps a cached copy until the plugin's version changes.
+- **Claude (claude.ai):** Customize → Plugins → + Add → Manage marketplaces → `xpayment-ai` → ⋯ → Check for updates. Automatic sync («Синхронизировать автоматически») needs the Claude GitHub app.
+- **Codex:** `codex plugin marketplace upgrade xpayment`, then a new session.
+- **ChatGPT:** upload the archive of the new release again; a custom MCP server needs no update.
+
+The plugin itself tells you when it is older than the documentation requires.
+
+## Support
+
+- xPayment: <https://xpayment.kz>
+- Documentation: <https://xpayment.kz/docs>
+- For AI assistants: <https://xpayment.kz/llms.txt>
+- Changes of this plugin: [CHANGELOG.md](CHANGELOG.md)
+
+## License
+
+MIT, see [LICENSE](LICENSE).
 
 ## Development
 
